@@ -29,5 +29,5 @@ clean:
 	rm {00000514-0000-0010-8000-00AA006D2EA4}.so
 
 check:
-	bash -x test.sh > tested.txt 2>&1
-	diff tested_.txt tested.txt
+	bash -x test.sh > test.sh.out.txt 2>&1
+	diff test.sh.out_.txt test.sh.out.txt

@@ -22,5 +22,5 @@ clean:
 	del oscript.exe REGEXP.dll GUI.dll OPENASP.dll
 
 check:
-	test > tested-win.txt 2>&1
-	fc tested-win_.txt tested-win.txt
+	test > test.cmd.out.txt 2>&1
+	fc test.cmd.out_.txt test.cmd.out.txt
