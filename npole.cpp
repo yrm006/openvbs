@@ -423,8 +423,8 @@ HRESULT VarDiv(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_I8){
         if(pvarRight->llVal == 0) return DISP_E_DIVBYZERO;
 
-        pvarResult->vt = VT_I8;
-        pvarResult->llVal = pvarLeft->llVal / pvarRight->llVal;
+        pvarResult->vt = VT_R8;
+        pvarResult->dblVal = (double)pvarLeft->llVal / (double)pvarRight->llVal;
     }else
     if(pvarLeft->vt == VT_R8 && pvarRight->vt == VT_R8){
         if(pvarRight->dblVal == 0.0) return DISP_E_DIVBYZERO;
