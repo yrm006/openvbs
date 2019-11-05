@@ -389,8 +389,8 @@ void ccs_stop(){
         CloseHandle(g_tid[i]);
     }
     
-    CLOSE(g_ctrl);
     CLOSE(g_ctrler);
+    CLOSE(g_ctrl);
     CLOSE(stopping);
                                                                                     LO_("close.");
     
