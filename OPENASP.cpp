@@ -705,11 +705,23 @@ private:
             VARIANT* pv = pDispParams->rgvarg;
             if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
 
-            size_t n = wchar_utf8(nullptr, 0, pv->bstrVal);
-            char* s = (char*)malloc(n);
-                wchar_utf8(s, n, pv->bstrVal);
-                ws_send(m_sock, s, n-1, 0, NULL, WS_OP_TEXT);
-            free(s);
+            _variant_t v;
+            if(::VariantChangeType(&v, pv, 0, VT_BSTR) == S_OK){
+                size_t n = wchar_utf8(nullptr, 0, v.bstrVal);
+                char* s = (char*)malloc(n);
+                    wchar_utf8(s, n, v.bstrVal);
+                    ws_send(m_sock, s, n-1, 0, NULL, WS_OP_TEXT);
+                free(s);
+            }else{
+                wchar_t buf[0x100];
+                swprintf(buf, 0x100, L"VARIANT:0x%x[0x%llx]", pv->vt, pv->llVal);
+
+                size_t n = wchar_utf8(nullptr, 0, buf);
+                char* s = (char*)malloc(n);
+                    wchar_utf8(s, n, buf);
+                    ws_send(m_sock, s, n-1, 0, NULL, WS_OP_TEXT);
+                free(s);
+            }
 
             return S_OK;
         }
@@ -721,19 +733,37 @@ private:
 
 
 class Unit{
+protected:
+    class CVBScript{
+    protected:
+        IDispatch*  m_pVBScript;
+    public:
+        CVBScript() : m_pVBScript(nullptr){
+            CFVBScript->CreateInstance(nullptr, IID_IDispatch, (void**)&m_pVBScript);
+        }
+        ~CVBScript(){
+            if(m_pVBScript) m_pVBScript->Release();
+        }
+        IDispatch* operator &(){
+            return m_pVBScript;
+        }
+    };
+
 public:
     Client      m_oClient;
+    CVBScript   m_oVBScript;
     CExtension  m_oExt;
     CProgram    m_oProgram;
     CProcessor  m_oProcessor;
 
     Unit(SOCKET sock, const wchar_t* pSource)
         : m_oClient(sock)
+        , m_oVBScript()
         , m_oExt{
             {L"Client", (IDispatch*)&m_oClient},
         }
         , m_oProgram(pSource)
-        , m_oProcessor(&m_oProgram, nullptr, &m_oExt)
+        , m_oProcessor(&m_oProgram, &m_oVBScript, &m_oExt)
     {}
 
     ~Unit(){}
