@@ -747,7 +747,10 @@ private:
         if(len == 1 && *c == L','){
             // none
         }else
-        if(len == 1 && *c == L'='){
+        if(
+            (len == 1 && *c == L'=')                    ||
+            (len == 2 && (*c==L':' && *(c+1)==L'=') )   ||
+        false){
             m_code.push_back( { parse_dim_name, map_word(parse_dim_name), _variant_t(), m_lines } );
             m_parse_mode = &CProgram::parse_;
             return parse_(c, len);
@@ -790,7 +793,10 @@ private:
         if(len == 1 && *c == L','){
             // none
         }else
-        if(len == 1 && *c == L'='){
+        if(
+            (len == 1 && *c == L'=')                    ||
+            (len == 2 && (*c==L':' && *(c+1)==L'=') )   ||
+        false){
             m_code.push_back( { parse_dim_name, map_word(parse_dim_name), _variant_t(), m_lines } );
             m_parse_mode = &CProgram::parse_;
             return parse_(c, len);
@@ -826,7 +832,10 @@ private:
         if(len == 1 && *c == L','){
             // none
         }else
-        if(len == 1 && *c == L'='){
+        if(
+            (len == 1 && *c == L'=')                    ||
+            (len == 2 && (*c==L':' && *(c+1)==L'=') )   ||
+        false){
             m_code.push_back( { parse_dim_name, map_word(parse_dim_name), _variant_t(), m_lines } );
             m_parse_mode = &CProgram::parse_;
             return parse_(c, len);
@@ -854,7 +863,10 @@ private:
     bool    parse_const_positive;
 
     const wchar_t* parse_const_literal(const wchar_t* c, size_t len){
-        if(len == 1 && *c == L'='){
+        if(
+            (len == 1 && *c == L'=')                    ||
+            (len == 2 && (*c==L':' && *(c+1)==L'=') )   ||
+        false){
             // none
         }else
         if(len == 1 && *c == L'+'){
