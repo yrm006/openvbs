@@ -605,6 +605,32 @@ public:
 
 
 
+class Null : public IDispatch{
+public:
+    Null(){}
+    virtual ~Null(){}
+
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return 1; }
+    ULONG STDMETHODCALLTYPE Release(){ return 1; }
+
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+        *rgDispId = DISPID_VALUE;
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        pVarResult->vt = VT_EMPTY;
+        return S_OK;
+    }
+};
+
+
+
 class CProgram : public IDispatch{
 private:
     static void* map_word(const istring& s);
@@ -1829,6 +1855,7 @@ public:
                 (*c0==L'+' && *c==L'+') ||
                 (*c0==L'-' && *c==L'-') ||
                 (*c0==L':' && *c==L'=') ||
+                (*c0==L'?' && *c==L'.') ||
             false){
                 ++c;
             }else
@@ -1961,6 +1988,7 @@ public:
     static const std::map<istring, word_m> s_words;
     static void* map_word(const istring& s);
     typedef bool (CProcessor::*inst_t)(VARIANT*);
+    static Null s_oNull;
     static const inst_t s_insts[];
     enum{
         INST_op_copy,
@@ -4463,6 +4491,31 @@ private:
 
         if(pv->wReserved1 != VTX_NONE){
             m_s.push_back( m_with.back().back() );
+        }
+
+        m_mode = &CProcessor::clock_dispatch;
+        return true;
+    }
+
+    bool word_quesdot(word_t& pc){
+        if( *((word_m*)m_pp->m_code[m_pc-2].p) != &CProcessor::word_parenL ){
+            do_left_invoke();
+        }
+
+        VARIANT* pv = &m_s.back();
+        if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+        if(pv->wReserved1 != VTX_NONE){
+            m_s.push_back( m_with.back().back() );
+
+            pv = &m_s.back();
+            if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+        }
+
+        if( (pv->vt == VT_DISPATCH && pv->pdispVal == nullptr) || pv->vt == VT_EMPTY ){
+            VariantClear(pv);
+            pv->vt = VT_DISPATCH;
+            pv->pdispVal = &s_oNull;
         }
 
         m_mode = &CProcessor::clock_dispatch;

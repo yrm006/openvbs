@@ -346,6 +346,7 @@ const std::map<istring, CProcessor::word_m> CProcessor::s_words = {
     {L"\n",            &CProcessor::word_colon},
     {L":",             &CProcessor::word_colon},
     {L".",             &CProcessor::word_dot},
+    {L"?.",            &CProcessor::word_quesdot},
     {L",",             &CProcessor::word_comma},
     {L"(",             &CProcessor::word_parenL},
     {L")",             &CProcessor::word_parenR},
@@ -382,6 +383,8 @@ void* CProcessor::map_word(const istring& s){
     auto found = CProcessor::s_words.find(s);
     return (found != CProcessor::s_words.end()) ? (void*)&found->second : (void*)&CProcessor::s_words.find(L"@")->second;
 }
+
+Null CProcessor::s_oNull;
 
 const CProcessor::inst_t CProcessor::s_insts[] = {
     &CProcessor::op_copy,
