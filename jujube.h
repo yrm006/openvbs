@@ -1983,12 +1983,11 @@ public:
 
 class CProcessor : public IDispatch{
 public:
-    // union word_cast{ bool (CProcessor::*m)(word_t&); void* v; };
+    static Null s_oNull;
     typedef bool (CProcessor::*word_m)(word_t&);
     static const std::map<istring, word_m> s_words;
     static void* map_word(const istring& s);
     typedef bool (CProcessor::*inst_t)(VARIANT*);
-    static Null s_oNull;
     static const inst_t s_insts[];
     enum{
         INST_op_copy,
