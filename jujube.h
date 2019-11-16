@@ -1856,6 +1856,7 @@ public:
                 (*c0==L'-' && *c==L'-') ||
                 (*c0==L':' && *c==L'=') ||
                 (*c0==L'?' && *c==L'.') ||
+                (*c0==L'?' && *c==L'?') ||
             false){
                 ++c;
             }else
@@ -3546,6 +3547,45 @@ private:
         return true;
     }
 
+    bool clock_shortcircuit(word_t& pc){
+        --m_pc;
+
+        int nest = 1;
+        while(nest){
+            if(*((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_parenL){
+                ++nest;
+            }else
+            if(*((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_parenR){
+                --nest;
+            }else
+            if(
+                nest == 1  &&
+                (
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_comma     ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_colon     ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_else      ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_elseif    ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_endif     ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_in        ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_to        ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_step      ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_exit      ||
+                false)      &&
+            true){
+                --nest;
+            }else
+            if(*((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_exit){
+                return false;
+            }else
+            {}
+
+            if(nest) ++m_pc;
+        }
+
+        m_mode = &CProcessor::clock_;
+        return true;
+    }
+
     bool clock_dispatch(word_t& pc){
         VARIANT* pv = &m_s.back();
         if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
@@ -4504,13 +4544,6 @@ private:
         VARIANT* pv = &m_s.back();
         if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
 
-        if(pv->wReserved1 != VTX_NONE){
-            m_s.push_back( m_with.back().back() );
-
-            pv = &m_s.back();
-            if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
-        }
-
         if( (pv->vt == VT_DISPATCH && pv->pdispVal == nullptr) || pv->vt == VT_EMPTY ){
             VariantClear(pv);
             pv->vt = VT_DISPATCH;
@@ -4518,6 +4551,23 @@ private:
         }
 
         m_mode = &CProcessor::clock_dispatch;
+        return true;
+    }
+
+    bool word_quesques(word_t& pc){
+        if( *((word_m*)m_pp->m_code[m_pc-2].p) != &CProcessor::word_parenL ){
+            do_left_invoke();
+        }
+
+        VARIANT* pv = &m_s.back();
+        if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+        if( (pv->vt == VT_DISPATCH && pv->pdispVal == nullptr) || pv->vt == VT_EMPTY ){
+            m_s.pop_back();
+        }else{
+            m_mode = &CProcessor::clock_shortcircuit;
+        }
+
         return true;
     }
 

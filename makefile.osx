@@ -9,21 +9,17 @@ all: oscript SCRIPTING.so ADODB.so OPENASP.so registry
 
 oscript: npole.h npole.cpp jujube.h jujube.cpp oscript.cpp
 	$(CPC) -Wall -std=c++14 $(OPT) oscript.cpp jujube.cpp npole.cpp -ldl -o oscript
-	rm -r oscript.dSYM
 
 SCRIPTING.so: npole.h npole.cpp SCRIPTING.cpp
 	$(CPC) -Wall -std=c++14 $(OPT) -shared SCRIPTING.cpp npole.cpp -o SCRIPTING.so
-	rm -r SCRIPTING.so.dSYM
 
 ADODB.so: npole.h npole.cpp ADODB.cpp
 	$(CPC) -Wall -std=c++14 $(OPT) -shared ADODB.cpp npole.cpp -o ADODB.so
-	rm -r ADODB.so.dSYM
 
 OPENASP.so: npole.h npole.cpp jujube.h jujube.cpp OPENASP.cpp
 	$(CC) -Wall -c $(OPT) http.c websocket.c cocoserve.c
 	$(CPC) -Wall -std=c++14 $(OPT) -shared OPENASP.cpp jujube.cpp npole.cpp http.o websocket.o cocoserve.o -o OPENASP.so
 	rm http.o websocket.o cocoserve.o
-	rm -r OPENASP.so.dSYM
 
 registry: SCRIPTING.so ADODB.so 
 	ln -sf SCRIPTING.so {EE09B103-97E0-11CF-978F-00A02463E06F}.so
@@ -33,6 +29,10 @@ clean:
 	rm oscript SCRIPTING.so ADODB.so OPENASP.so
 	rm {EE09B103-97E0-11CF-978F-00A02463E06F}.so
 	rm {00000514-0000-0010-8000-00AA006D2EA4}.so
+	rm -r oscript.dSYM
+	rm -r SCRIPTING.so.dSYM
+	rm -r ADODB.so.dSYM
+	rm -r OPENASP.so.dSYM
 
 check:
 	bash -x test.sh > test.sh.out.txt 2>&1

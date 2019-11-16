@@ -347,6 +347,7 @@ const std::map<istring, CProcessor::word_m> CProcessor::s_words = {
     {L":",             &CProcessor::word_colon},
     {L".",             &CProcessor::word_dot},
     {L"?.",            &CProcessor::word_quesdot},
+    {L"??",            &CProcessor::word_quesques},
     {L",",             &CProcessor::word_comma},
     {L"(",             &CProcessor::word_parenL},
     {L")",             &CProcessor::word_parenR},
