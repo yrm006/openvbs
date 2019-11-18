@@ -3616,6 +3616,20 @@ private:
                         v.byref = put ? (void*)&s_insts[INST_op_invoke_put] : (void*)&s_insts[INST_op_invoke];
                         m_s.push_back( v );
                     }
+
+                    if( *((word_m*)m_pp->m_code[m_pc].p) != &CProcessor::word_parenL ){
+                        int ni = 0;{
+                            auto i = m_s.rbegin();
+                            while(!( i->wReserved1 == VTX_GROUND )){
+                                if(i->wReserved1 == VTX_INST) ++ni;
+                                ++i;
+                            }
+                        }
+
+                        if(1 < ni){
+                            do_left_invoke();
+                        }
+                    }
                 }
 
                 m_mode = &CProcessor::clock_;
