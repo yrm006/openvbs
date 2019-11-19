@@ -53,11 +53,24 @@ Bingo Machine:
     end function
 
 ## How to build
-$ make -f makefile.osx
-(also included .linux and .win for the make)
+
+### Windows
+x64 Native Tools Command Prompt for VS 2019
+
+    > nmake -f makefile.win
+
+### OSX
+Xcode gcc
+
+    $ make -f makefile.os
+
+### Linux
+gcc
+
+    $ make -f makefile.linux
 
 ## Usage
-$ ./oscript sample.obs
+    $ ./oscript sample.obs
 
 ## Licence
 [CC-BY](http://creativecommons.org/licenses/by/4.0/)
