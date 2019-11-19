@@ -72,6 +72,8 @@ GNU gcc
 ## Usage
     $ ./oscript sample.obs
 
+[more...](https://github.com/yrm006/openvbs/blob/master/readme.txt)
+
 ## Licence
 [CC-BY](http://creativecommons.org/licenses/by/4.0/)
 
