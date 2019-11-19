@@ -65,7 +65,7 @@ Xcode gcc
     $ make -f makefile.os
 
 ### Linux
-gcc
+GNU gcc
 
     $ make -f makefile.linux
 
