@@ -215,24 +215,32 @@ HRESULT VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, ULONG dwFlags
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
     
-    _variant_t vL;
-    if(pvarRight->vt == VT_BSTR && pvarLeft->vt != VT_BSTR){
-        VariantChangeType(&vL, pvarLeft, 0, VT_BSTR);
-        pvarLeft = &vL;
-    }else
-    if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
-        VariantChangeType(&vL, pvarLeft, 0, VT_R8);
-        pvarLeft = &vL;
-    }
-    _variant_t vR;
+    _variant_t v;
     if(pvarLeft->vt == VT_BSTR && pvarRight->vt != VT_BSTR){
-        VariantChangeType(&vR, pvarRight, 0, VT_BSTR);
-        pvarRight = &vR;
+        VariantChangeType(&v, pvarRight, 0, VT_BSTR);
+        pvarRight = &v;
+    }else
+    if(pvarRight->vt == VT_BSTR && pvarLeft->vt != VT_BSTR){
+        VariantChangeType(&v, pvarLeft, 0, VT_BSTR);
+        pvarLeft = &v;
     }else
     if(pvarLeft->vt == VT_R8 && pvarRight->vt != VT_R8){
-        VariantChangeType(&vR, pvarRight, 0, VT_R8);
-        pvarRight = &vR;
-    }
+        VariantChangeType(&v, pvarRight, 0, VT_R8);
+        pvarRight = &v;
+    }else
+    if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
+        VariantChangeType(&v, pvarLeft, 0, VT_R8);
+        pvarLeft = &v;
+    }else
+    if(pvarLeft->vt == VT_I8 && pvarRight->vt != VT_I8){
+        VariantChangeType(&v, pvarRight, 0, VT_I8);
+        pvarRight = &v;
+    }else
+    if(pvarRight->vt == VT_I8 && pvarLeft->vt != VT_I8){
+        VariantChangeType(&v, pvarLeft, 0, VT_I8);
+        pvarLeft = &v;
+    }else
+    {}
 
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_I8){
         return  (pvarLeft->llVal < pvarRight->llVal) ? VARCMP_LT
@@ -684,6 +692,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         }
     }else
     if(vt == VT_R8){
+        if(pvarSrc->vt == VT_EMPTY){
+            pvargDest->vt = VT_R8;
+            pvargDest->dblVal = 0.0;
+        }else
         if(pvarSrc->vt == VT_I8){
             pvargDest->vt = VT_R8;
             pvargDest->dblVal = pvarSrc->llVal;
@@ -720,6 +732,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         }
     }else
     if(vt == VT_I4){
+        if(pvarSrc->vt == VT_EMPTY){
+            pvargDest->vt = VT_I4;
+            pvargDest->lVal = 0;
+        }else
         if(pvarSrc->vt == VT_I8){
             pvargDest->vt = VT_I4;
             pvargDest->lVal = pvarSrc->llVal;
@@ -730,6 +746,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         }
     }else
     if(vt == VT_UI1){
+        if(pvarSrc->vt == VT_EMPTY){
+            pvargDest->vt = VT_UI1;
+            pvargDest->bVal = 0;
+        }else
         if(pvarSrc->vt == VT_I8){
             pvargDest->vt = VT_UI1;
             pvargDest->bVal = pvarSrc->llVal;
