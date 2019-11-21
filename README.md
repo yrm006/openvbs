@@ -54,18 +54,15 @@ Bingo Machine:
 
 ## How to build
 
-### Windows
-x64 Native Tools Command Prompt for VS 2019
+[Windows] x64 Native Tools Command Prompt for VS 2019
 
     > nmake -f makefile.win
 
-### OSX
-Xcode gcc
+[OSX] Xcode gcc
 
-    $ make -f makefile.os
+    $ make -f makefile.osx
 
-### Linux
-GNU gcc
+[Linux] GNU gcc
 
     $ make -f makefile.linux
 
