@@ -1848,6 +1848,12 @@ public:
                 }
             }else
             if(
+                (*c0==L'=' && *c==L'=' && *(c+1)==L'=') ||
+                (*c0==L'!' && *c==L'=' && *(c+1)==L'=') ||
+            false){
+                ++c;++c;
+            }else
+            if(
                 (*c0==L'<' && *c==L'=') ||
                 (*c0==L'>' && *c==L'=') ||
                 (*c0==L'<' && *c==L'>') ||
@@ -2011,6 +2017,8 @@ public:
         INST_op_gethan,
         INST_op_neq,
         INST_op_equal,
+        INST_op_triequal,
+        INST_op_trineq,
         INST_op_is,
         INST_op_not,
         INST_op_and,
@@ -2414,6 +2422,86 @@ private:
         if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
 
         _variant_t v( VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ );
+
+        while(p-2 < &m_s.back()) m_s.pop_back();
+
+        m_s.push_back(v);
+
+        return true;
+    }
+
+    bool op_triequal(VARIANT* p){
+        VARIANT* pvL = p-1;
+        VARIANT* pvR = p+1;
+
+        if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
+        if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
+
+        bool b = (
+            pvL->vt == pvR->vt &&
+            (
+                (pvL->vt == VT_EMPTY)                                      ||
+                (pvL->vt == VT_NULL)                                       ||
+                (pvL->vt == VT_ERROR)                                      ||
+                (pvL->vt == VT_DISPATCH           && pvL->pdispVal == pvR->pdispVal) ||
+                (pvL->vt == (VT_ARRAY|VT_VARIANT) && pvL->parray == pvR->parray)     ||
+                // (pvL->vt == VT_I1   && pvL-> == pvR->) ||
+                // (pvL->vt == VT_I2   && pvL-> == pvR->) ||
+                (pvL->vt == VT_I4   && pvL->lVal  == pvR->lVal)      ||
+                (pvL->vt == VT_I8   && pvL->llVal == pvR->llVal)     ||
+                // (pvL->vt == VT_UI1  && pvL-> == pvR->) ||
+                (pvL->vt == VT_UI2  && pvL->uiVal == pvR->uiVal)     ||
+                // (pvL->vt == VT_UI4  && pvL-> == pvR->) ||
+                (pvL->vt == VT_UI8  && pvL->ullVal == pvR->ullVal)   ||
+                // (pvL->vt == VT_R4   && pvL-> == pvR->) ||
+                (pvL->vt == VT_R8   && pvL->dblVal == pvR->dblVal)   ||
+                // (pvL->vt == VT_CY   && pvL-> == pvR->) ||
+                (pvL->vt == VT_DATE && pvL->date == pvR->date)       ||
+                (pvL->vt == VT_BOOL && pvL->boolVal == pvR->boolVal) ||
+                (pvL->vt == VT_BSTR && std::wcscmp(pvL->bstrVal, pvR->bstrVal) == 0) ||
+            false)             &&
+        true);
+       _variant_t v( b );
+
+        while(p-2 < &m_s.back()) m_s.pop_back();
+
+        m_s.push_back(v);
+
+        return true;
+    }
+
+    bool op_trineq(VARIANT* p){
+        VARIANT* pvL = p-1;
+        VARIANT* pvR = p+1;
+
+        if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
+        if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
+
+        bool b = (
+            pvL->vt == pvR->vt &&
+            (
+                (pvL->vt == VT_EMPTY)                                      ||
+                (pvL->vt == VT_NULL)                                       ||
+                (pvL->vt == VT_ERROR)                                      ||
+                (pvL->vt == VT_DISPATCH           && pvL->pdispVal == pvR->pdispVal) ||
+                (pvL->vt == (VT_ARRAY|VT_VARIANT) && pvL->parray == pvR->parray)     ||
+                // (pvL->vt == VT_I1   && pvL-> == pvR->) ||
+                // (pvL->vt == VT_I2   && pvL-> == pvR->) ||
+                (pvL->vt == VT_I4   && pvL->lVal  == pvR->lVal)      ||
+                (pvL->vt == VT_I8   && pvL->llVal == pvR->llVal)     ||
+                // (pvL->vt == VT_UI1  && pvL-> == pvR->) ||
+                (pvL->vt == VT_UI2  && pvL->uiVal == pvR->uiVal)     ||
+                // (pvL->vt == VT_UI4  && pvL-> == pvR->) ||
+                (pvL->vt == VT_UI8  && pvL->ullVal == pvR->ullVal)   ||
+                // (pvL->vt == VT_R4   && pvL-> == pvR->) ||
+                (pvL->vt == VT_R8   && pvL->dblVal == pvR->dblVal)   ||
+                // (pvL->vt == VT_CY   && pvL-> == pvR->) ||
+                (pvL->vt == VT_DATE && pvL->date == pvR->date)       ||
+                (pvL->vt == VT_BOOL && pvL->boolVal == pvR->boolVal) ||
+                (pvL->vt == VT_BSTR && std::wcscmp(pvL->bstrVal, pvR->bstrVal) == 0) ||
+            false)             &&
+        true);
+       _variant_t v( !b );
 
         while(p-2 < &m_s.back()) m_s.pop_back();
 
@@ -3816,6 +3904,8 @@ private:
             { &CProcessor::op_gthan,   10 },
             { &CProcessor::op_lethan,  10 },
             { &CProcessor::op_gethan,  10 },
+            { &CProcessor::op_triequal,10 },
+            { &CProcessor::op_trineq,  10 },
             { &CProcessor::op_is,      11 },
             { &CProcessor::op_not,     20 },
             { &CProcessor::op_and,     21 },
@@ -4458,6 +4548,34 @@ private:
             _variant_t v;
             v.wReserved1 = VTX_INST;
             v.byref = (void*)&s_insts[INST_op_equal];
+            m_s.push_back( v );
+        }
+
+        return true;
+    }
+
+    bool word_eqeqeq(word_t& pc){
+        do_left_invoke();
+
+        do_left_op(&CProcessor::op_triequal);
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_op_triequal];
+            m_s.push_back( v );
+        }
+
+        return true;
+    }
+
+    bool word_exeqeq(word_t& pc){
+        do_left_invoke();
+
+        do_left_op(&CProcessor::op_trineq);
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_op_trineq];
             m_s.push_back( v );
         }
 
