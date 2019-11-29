@@ -910,7 +910,7 @@ int  on_ws_data(SOCKET sock, context* ctx, char* buf, size_t len, char opcode){
     Unit* pu = (Unit*)ctx->nest;
 
     size_t n = utf8_wchar(nullptr, 0, buf);
-    BSTR s = SysAllocStringLen(NULL, n);
+    BSTR s = SysAllocStringLen(NULL, n-1);
     utf8_wchar(s, n, buf);
 
     _variant_t v;{
