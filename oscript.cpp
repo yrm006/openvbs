@@ -224,6 +224,86 @@ public:
         return E_FAIL;
     }
 
+    HRESULT vbVarDump(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        if(!( pDispParams->cArgs == 1 )) return E_INVALIDARG;
+
+        VARIANT* pv = pDispParams->rgvarg;
+        if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+        std::wstring s;
+
+        VARTYPE mvt = (pv->vt & VT_TYPEMASK);
+        if(mvt == VT_EMPTY){
+            s += (std::wstring)L"Empty";
+        }else
+        if(mvt == VT_NULL){
+            s += (std::wstring)L"Null";
+        }else
+        if(mvt == VT_UI1){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%u", pv->bVal);
+            s += (std::wstring)L"Byte(" + buf + L")";
+        }else
+        if(mvt == VT_UI2){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%hu", pv->uiVal);
+            s += (std::wstring)L"Integer(" + buf + L")";
+        }else
+        if(mvt == VT_I4){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%d", pv->lVal);
+            s += (std::wstring)L"Long(" + buf + L")";
+        }else
+        if(mvt == VT_I8 || mvt == VT_UI8){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%lld", pv->llVal);
+            s += (std::wstring)L"Longlong(" + buf + L")";
+        }else
+        if(mvt == VT_R8){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%g", pv->dblVal);
+            s += (std::wstring)L"Double(" + buf + L")";
+        }else
+        if(mvt == VT_BSTR){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%u", SysStringLen(pv->bstrVal));
+            s += (std::wstring)L"String(" + buf + L") \"" + pv->bstrVal + L"\"";
+        }else
+        if(mvt == VT_DISPATCH){
+            if(pv->pdispVal){
+                s += (std::wstring)L"Object";
+                //### show JSON strin when this is json-object.
+            }else{
+                s += (std::wstring)L"Nothing";
+            }
+        }else
+        if(mvt == VT_BOOL){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%ls", pv->boolVal==VARIANT_TRUE ? L"true" : L"false");
+            s += (std::wstring)L"Boolean(" + buf + L")";
+        }else
+        if(mvt == VT_VARIANT){
+            s += (std::wstring)L"Variant";
+        }else
+        {
+            s += (std::wstring)L"[Unknown]";
+        }
+
+        if(pv->vt & VT_ARRAY){
+            wchar_t buf[0xff];
+            swprintf(buf, 0xff, L"%u", pv->parray->rgsabound[0].cElements); //### many dimension
+            s += (std::wstring)L" Array(" + buf + L")";
+            //### show array elements
+        }
+
+        pVarResult->vt = VT_BSTR;
+        pVarResult->bstrVal = SysAllocString(s.c_str());
+
+        return S_OK;
+    }
+
     HRESULT vbVarType(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
@@ -2047,6 +2127,7 @@ std::map<istring, DISPID> VBScript::s_disps_ids{
     {L"CreateObject",           s_disps_n++},
     {L"GetObject",              s_disps_n++},
     {L"TypeName",               s_disps_n++},
+    {L"VarDump",                s_disps_n++},
     {L"VarType",                s_disps_n++},
     {L"IsArray",                s_disps_n++},
     {L"IsObject",               s_disps_n++},
@@ -2182,6 +2263,7 @@ std::vector<_variant_t> VBScript::s_disps{
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCreateObject}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbGetObject}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTypeName}).v}}}} },
+    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbVarDump}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbVarType}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsArray}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsObject}).v}}}} },
