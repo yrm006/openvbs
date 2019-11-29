@@ -1,9 +1,9 @@
 OpenVBS
-    - The Script Engine -
+    - The Script Engine for the BASIC-2020 -
 ---
 
 * What?
-    This is a script engine like VBScript.
+    This is a script engine for modern BASIC, compatible with VBScript.
 
 * How?
     > oscript sample.obs
@@ -54,6 +54,10 @@ OpenVBS
         * :, LF
         * .
         * ,
+        * ?.
+        * ??
+        * ===
+        * !==
     * Literal
         * true, false, empty, null, nothing
         * Integer number[&H,&B] (64bit signed)
@@ -204,6 +208,13 @@ OpenVBS
 
 
 * Change Log
+    * 20191129
+        [add] source from stdin
+        [add] operator: '===' and '!=='
+        [add] VarCmp for Empty
+        [add] Nullish Coalescing '??'
+        [add] Optional Chaining  ‘?.'
+        [add] VBS functions on 'osk' file.
     * 20191031
         [fix] '=' problem in 'if' statement
         [add] CLSCTX_LOCAL_SERVER for Windows
@@ -219,4 +230,4 @@ OpenVBS
     http://creativecommons.org/licenses/by/4.0/
 
 ---
-yrm.20191031
+yrm.20191129

@@ -68,6 +68,7 @@ Bingo Machine:
 
 ## Usage
     $ ./oscript sample.obs
+    $ echo "wscript.echo 123" | ./oscript
 
 [more...](https://github.com/yrm006/openvbs/blob/master/readme.txt)
 
