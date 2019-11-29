@@ -2425,7 +2425,20 @@ int main(int argn, const char* argc[]){
 #endif
     }
 
-    if(!pSource){ fwprintf(stderr, L"!Need source file.\n"); return -1; };
+    if(!pSource){
+        char aBuf[MAX_SIZE+1];{
+            aBuf[MAX_SIZE] = 0xff;
+            size_t read = fread(aBuf, sizeof(aBuf[0]), sizeof(aBuf)/sizeof(aBuf[0])-1, stdin);
+            aBuf[read] = 0x00;
+        }
+
+        // check size
+        if(!aBuf[MAX_SIZE]){ fwprintf(stderr, L"!Max source size is %zd byte.\n", sizeof(aBuf)); return -1; };
+
+        if(!utf8_wchar(aSource, sizeof(aSource)/sizeof(aSource[0]), aBuf)){ fwprintf(stderr, L"!Need UTF8 format.\n"); return -1; }
+
+        pSource = aSource;
+    }
 
 
 
