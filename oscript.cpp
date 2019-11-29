@@ -534,6 +534,24 @@ public:
         return hr;
     }
 
+    HRESULT vbCLnglng(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        if(!( pDispParams->cArgs == 1 )) return E_INVALIDARG;
+
+        VARIANT* pv = pDispParams->rgvarg;
+        if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+        _variant_t v;
+        HRESULT hr;
+        if( SUCCEEDED( hr = VariantChangeType(&v, pv, 0, VT_I8) ) ){
+            *pVarResult = v.Detach();
+            return S_OK;
+        }
+        
+        return hr;
+    }
+
     HRESULT vbCSng(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
@@ -2142,6 +2160,7 @@ std::map<istring, DISPID> VBScript::s_disps_ids{
     {L"CDbl",                   s_disps_n++},
     {L"CInt",                   s_disps_n++},
     {L"CLng",                   s_disps_n++},
+    {L"CLnglng",                s_disps_n++},
     {L"CSng",                   s_disps_n++},
     {L"CStr",                   s_disps_n++},
     {L"LBound",                 s_disps_n++},
@@ -2278,6 +2297,7 @@ std::vector<_variant_t> VBScript::s_disps{
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCDbl}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCInt}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCLng}).v}}}} },
+    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCLnglng}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCSng}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCStr}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLBound}).v}}}} },

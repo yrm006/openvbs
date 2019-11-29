@@ -731,6 +731,18 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->vt = VT_I8;
             pvargDest->llVal = ll;
         }else
+        if(pvarSrc->vt == VT_I4){
+            pvargDest->vt = VT_I8;
+            pvargDest->llVal = pvarSrc->lVal;
+        }else
+        if(pvarSrc->vt == VT_UI1){
+            pvargDest->vt = VT_I8;
+            pvargDest->llVal = pvarSrc->bVal;
+        }else
+        if(pvarSrc->vt == VT_R8){
+            pvargDest->vt = VT_I8;
+            pvargDest->llVal = pvarSrc->dblVal;
+        }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
             return E_INVALIDARG;
