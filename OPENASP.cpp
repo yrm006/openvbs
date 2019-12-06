@@ -500,6 +500,62 @@ private:
 //  OpenASP
 //---------------------------
 
+class Contents : public IDispatch{
+private:
+    ULONG       m_refc   = 1;
+
+protected:
+    std::map<_variant_t, _variant_t> m_map;
+
+public:
+    Contents(){/*wprintf(L"%s\n", __func__);*/}
+    virtual ~Contents(){/*wprintf(L"%s\n", __func__);*/}
+
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+        if(_wcsicmp(*rgszNames, L"Count") == 0){
+            *rgDispId = 1;
+        }else
+        {
+wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
+            return DISP_E_MEMBERNOTFOUND;
+        }
+
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        if(dispIdMember == 0){
+            if(wFlags == DISPATCH_PROPERTYPUT){
+                VARIANT* pv0 = &pDispParams->rgvarg[0];
+                if(pv0->vt == (VT_BYREF|VT_VARIANT)) pv0 = pv0->pvarVal;
+                VARIANT* pv1 = &pDispParams->rgvarg[1];
+                if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+                
+                m_map[*pv1] = *pv0;
+            }else{
+                VariantCopy(pVarResult, &m_map[pDispParams->rgvarg[0]]);
+            }
+        }else
+        if(dispIdMember == 1){
+            pVarResult->vt = VT_I8;
+            pVarResult->llVal = m_map.size();
+        }else
+        {
+            return DISP_E_MEMBERNOTFOUND;
+        }
+
+        return S_OK;
+    }
+};
+
 class Server : public IDispatch{
 public:
     Server(){}
@@ -527,11 +583,17 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
 
 class Application : public IDispatch{
 public:
-    Application(){}
-    virtual ~Application(){}
+    Application(){
+        m_pCtnts = new Contents();
+    }
+    virtual ~Application(){
+        m_pCtnts->Release();
+    }
 
 private:
     ULONG       m_refc   = 1;
+
+    Contents*   m_pCtnts;
 
     HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
     ULONG AddRef(){ return ++m_refc; }
@@ -540,12 +602,28 @@ private:
     HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
     HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+        if(_wcsicmp(*rgszNames, L"Contents") == 0){
+            *rgDispId = 1;
+        }else
+        {
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
-        return DISP_E_MEMBERNOTFOUND;
+            return DISP_E_MEMBERNOTFOUND;
+        }
+
+        return S_OK;
     }
     HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
+        if(dispIdMember == 0){
+            return m_pCtnts->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+        }else
+        if(dispIdMember == 1){
+            pVarResult->vt = VT_DISPATCH;
+            (pVarResult->pdispVal = m_pCtnts)->AddRef();
+            return S_OK;
+        }
+
         return DISP_E_MEMBERNOTFOUND;
     }
 };
@@ -628,7 +706,8 @@ private:
             *rgDispId = 2;
         }else
         {
-            return E_FAIL;
+wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
+            return DISP_E_MEMBERNOTFOUND;
         }
 
         return S_OK;
@@ -663,6 +742,9 @@ private:
         return E_FAIL;
     }
 };
+
+Server      g_oServer;
+Application g_oApplication;
 
 
 
@@ -760,7 +842,9 @@ public:
         : m_oClient(sock)
         , m_oVBScript()
         , m_oExt{
-            {L"Client", (IDispatch*)&m_oClient},
+            { L"Server"     , (IDispatch*)&g_oServer },
+            { L"Application", (IDispatch*)&g_oApplication },
+            { L"Client"     , (IDispatch*)&m_oClient },
         }
         , m_oProgram(pSource)
         , m_oProcessor(&m_oProgram, &m_oVBScript, &m_oExt)
@@ -1106,15 +1190,13 @@ int  on_http_request_osp(SOCKET sock, context* ctx, FILE* f){
         IDispatch* pVBScript = nullptr;
         CFVBScript->CreateInstance(nullptr, IID_IDispatch, (void**)&pVBScript);
 
-        Server      oServer;
-        Application oApplication;
         Session     oSession;
         Request     oRequest;
         Response    oResponse(soto);
 
         CExtension oExt = {
-            { L"Server"     , (IDispatch*)&oServer },
-            { L"Application", (IDispatch*)&oApplication },
+            { L"Server"     , (IDispatch*)&g_oServer },
+            { L"Application", (IDispatch*)&g_oApplication },
             { L"Session"    , (IDispatch*)&oSession },
             { L"Request"    , (IDispatch*)&oRequest },
             { L"Response"   , (IDispatch*)&oResponse },
