@@ -3,10 +3,11 @@ OpenVBS
 ---
 
 * What?
-    This is a script engine for modern BASIC, compatible with VBScript.
+    This is a script engine for the modern BASIC powered by the Jujube core. It is compatible with VBScript and has the modern features added. In addition, the Classic-ASP layer is implemented(on the way) as a library, so you can port your website to the Linux. [more...](https://p.na-s.jp/openvbs.html)
 
 * How?
     > oscript sample.obs
+    $ echo "wscript.echo 123" | ./oscript
 
 
 
@@ -116,6 +117,7 @@ OpenVBS
         * CreateObject
         * GetObject
         * TypeName
+        * VarDump [PROPER]
         * VarType
         * IsArray
         * IsObject
@@ -130,6 +132,7 @@ OpenVBS
         * CDbl
         * CInt
         * CLng
+        * CLnglng [PROPER]
         * CSng
         * CStr
         * LBound
@@ -208,6 +211,11 @@ OpenVBS
 
 
 * Change Log
+    * 20191209
+        [fix] data length in osk on_data
+        [add] VarDump
+        [add] CLnglng
+        [add] Application.Contents in OpenASP
     * 20191129
         [add] source from stdin
         [add] operator: '===' and '!=='
@@ -230,4 +238,4 @@ OpenVBS
     http://creativecommons.org/licenses/by/4.0/
 
 ---
-yrm.20191129
+yrm.20191209

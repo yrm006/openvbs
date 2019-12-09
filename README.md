@@ -4,7 +4,7 @@ OpenVBS
 The Script Engine for the BASIC-2020.
 
 ## Description
-This is a script engine for modern BASIC. It is compatible with VBScript and has the modern features added. In addition, the Classic-ASP layer is implemented(on the way) as a library, so you can port your website to Linux. [more...](https://p.na-s.jp/openvbs.html)
+This is a script engine for the modern BASIC powered by the Jujube core. It is compatible with VBScript and has the modern features added. In addition, the Classic-ASP layer is implemented(on the way) as a library, so you can port your website to the Linux. [more...](https://p.na-s.jp/openvbs.html)
 
 ## Sample.obs
 Bingo Machine:
@@ -77,3 +77,6 @@ Bingo Machine:
 
 ## Author
 [NaturalStyle PREMIUM](https://p.na-s.jp)
+
+---
+yrm.20191209
