@@ -1150,3 +1150,9 @@ size_t wchar_utf8(char* out, size_t outc, const wchar_t* in){
 }
 
 
+
+bool operator<(const _variant_t& l, const _variant_t& r){
+    return (VarCmp((LPVARIANT)&l, (LPVARIANT)&r, 0, 0) == VARCMP_LT);
+}
+
+

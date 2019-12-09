@@ -455,9 +455,6 @@
             VariantCopy(this, &r);
             return *this;
         }
-        bool operator<(const _variant_t& r) const{
-            return (VarCmp((LPVARIANT)this, (LPVARIANT)&r, 0, 0) == VARCMP_LT);
-        }
         void Attach(VARIANT& r){
             VariantClear(this);
             *(VARIANT*)this = r;
@@ -556,5 +553,7 @@
 
 size_t utf8_wchar(wchar_t*, size_t, const char*);
 size_t wchar_utf8(char*, size_t, const wchar_t*);
+
+bool operator<(const _variant_t& l, const _variant_t& r);
 
 
