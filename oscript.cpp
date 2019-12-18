@@ -4,6 +4,12 @@
 #include <locale.h>
 #include <stdlib.h>
 
+#ifdef _WIN32
+    #define usleep(m)    Sleep(m/1000)
+#else
+    #include <unistd.h>
+#endif
+
 
 
 
@@ -2384,7 +2390,11 @@ public:
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         if(_wcsicmp(*rgszNames, L"echo") == 0){
             *rgDispId = 1;
-        }else{
+        }else
+        if(_wcsicmp(*rgszNames, L"sleep") == 0){
+            *rgDispId = 2;
+        }else
+        {
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
             return DISP_E_MEMBERNOTFOUND;
         }
@@ -2407,7 +2417,18 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
                     wprintf(L"VARIANT:0x%x[0x%llx]\n", v.vt, v.llVal);
                 }
             }
-        }else{
+        }else
+        if(dispIdMember == 2){
+            VARIANT* pv = pDispParams->rgvarg;
+            if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+            if(pv->vt == VT_I8){
+                usleep( pv->llVal*1000 );
+            }else{
+                return E_INVALIDARG;
+            }
+        }else
+        {
             return DISP_E_MEMBERNOTFOUND;
         }
 
