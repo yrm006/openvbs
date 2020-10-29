@@ -12,6 +12,7 @@
 #else
  #include <arpa/inet.h>
  #include <unistd.h>
+ #include <pthread.h>
 
  extern "C"{
  #include "websocket.h"
@@ -40,6 +41,12 @@
     void WSA_CLEANUP(){
         WSACleanup();
     }
+
+    #define pthread_mutex_t          CRITICAL_SECTION
+    #define pthread_mutex_init(a,b)  InitializeCriticalSection(a)
+    #define pthread_mutex_destroy(a) DeleteCriticalSection(a)
+    #define pthread_mutex_lock(a)    EnterCriticalSection(a)
+    #define pthread_mutex_unlock(a)  LeaveCriticalSection(a)
 #else
     #define WSA_STARTUP(...)
     #define WSA_CLEANUP(...)
@@ -506,10 +513,15 @@ private:
 
 protected:
     std::map<_variant_t, _variant_t> m_map;
+    pthread_mutex_t                  m_mtx;
 
 public:
-    Contents(){/*wprintf(L"%s\n", __func__);*/}
-    virtual ~Contents(){/*wprintf(L"%s\n", __func__);*/}
+    Contents(){/*wprintf(L"%s\n", __func__);*/
+        pthread_mutex_init(&m_mtx, NULL);
+    }
+    virtual ~Contents(){/*wprintf(L"%s\n", __func__);*/
+        pthread_mutex_destroy(&m_mtx);
+    }
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
@@ -539,14 +551,20 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
                 VARIANT* pv1 = &pDispParams->rgvarg[1];
                 if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
                 
-                m_map[*pv1] = *pv0;
+                pthread_mutex_lock(&m_mtx);
+                    m_map[*pv1] = *pv0;
+                pthread_mutex_unlock(&m_mtx);
             }else{
-                VariantCopy(pVarResult, &m_map[pDispParams->rgvarg[0]]);
+                pthread_mutex_lock(&m_mtx);
+                    VariantCopy(pVarResult, &m_map[pDispParams->rgvarg[0]]);
+                pthread_mutex_unlock(&m_mtx);
             }
         }else
         if(dispIdMember == 1){
-            pVarResult->vt = VT_I8;
-            pVarResult->llVal = m_map.size();
+            pthread_mutex_lock(&m_mtx);
+                pVarResult->vt = VT_I8;
+                pVarResult->llVal = m_map.size();
+            pthread_mutex_unlock(&m_mtx);
         }else
         {
             return DISP_E_MEMBERNOTFOUND;
