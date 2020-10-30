@@ -637,7 +637,7 @@ private:
 
 private:
     typedef const wchar_t* (CProgram::*mode_t)(const wchar_t*, size_t);
-    struct dim_names_t{ DIMSCOPE s; size_t i; };
+    struct dim_names_t{ DIMSCOPE s; size_t i; size_t line; };
     struct funcs_t{ DIMSCOPE s; _prog_ptr_t p; };
 
     mode_t m_parse_mode;
@@ -793,7 +793,7 @@ private:
             parse_dim_name = istring(c, len);
 
             auto n = m_dim_names.size();
-            auto i = m_dim_names.insert({parse_dim_name, {DSC_PUBLIC, n}});
+            auto i = m_dim_names.insert({parse_dim_name, {DSC_PUBLIC, n, m_lines}});
             if(i.second){
                 m_dim_defs.push_back( _variant_t() );
             }else{
@@ -1712,6 +1712,7 @@ public:
     CProgram*                       m_granpa;        //!!! weak
 
     size_t                          m_lines;
+    size_t                          m_pline;
 
     //### this copy-constructor has error, check it.
     CProgram(const CProgram& r)
@@ -1729,6 +1730,7 @@ public:
         , m_parent(r.m_parent)
         , m_granpa(r.m_granpa)
         , m_lines(r.m_lines)
+        , m_pline(r.m_pline)
     {
         {
             auto i = r.m_funcs.begin();
@@ -1781,6 +1783,7 @@ public:
         , m_parent(parent)
         , m_granpa(parent ? parent->m_granpa : this)
         , m_lines(parent ? parent->m_lines : 0)
+        , m_pline(parent ? parent->m_lines : 0)
     {
         {
             istring s(L":");
