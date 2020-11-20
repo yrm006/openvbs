@@ -1,9 +1,13 @@
 
-all: oscript.exe REGEXP.dll GUI.dll OPENASP.dll
+all: oscript.exe openvbs.dll REGEXP.dll GUI.dll OPENASP.dll
 	@echo DONE
 
 oscript.exe:
 	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS oscript.cpp jujube.cpp npole.cpp /link /DEF:oscript.def
+	del *.obj *.lib *.exp
+
+openvbs.dll:
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS openvbs.cpp jujube.cpp npole.cpp /link /DLL /OUT:openvbs.dll /DEF:openvbs.def advapi32.lib Ole32.lib
 	del *.obj *.lib *.exp
 
 REGEXP.dll:
@@ -19,7 +23,7 @@ OPENASP.dll:
 	del *.obj *.lib *.exp
 
 clean:
-	del oscript.exe REGEXP.dll GUI.dll OPENASP.dll
+	del oscript.exe openvbs.dll REGEXP.dll GUI.dll OPENASP.dll
 
 check:
 	test > test.cmd.out.txt 2>&1

@@ -5849,6 +5849,26 @@ public:
         return hr;
     }
 
+    void Reset(){
+        m_scope.clear();
+        m_scope.push_back( m_pp->m_dim_defs );
+        m_pgdims = &m_scope.back();
+
+        m_autodim.clear();
+        m_autodim.push_back( {} );
+        m_pgadims = &m_autodim.back();
+
+        m_with.clear();
+        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+
+        m_onerr.clear();
+        m_onerr.push_back(&CProcessor::onerr_goto0);
+
+        m_s.clear();
+
+        m_pc = 0;
+    }
+
 
 
 //IDispatch
