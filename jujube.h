@@ -647,6 +647,10 @@ private:
             m_code.pop_back();
             m_option_explicit = true;
         }else
+        if(len == 4 && _wcsnicmp(L"json", c, len) == 0){
+            m_code.pop_back();
+            m_option_json = true;
+        }else
         {
             //#!# maybe syntax error
             m_parse_mode = &CProgram::parse_;
@@ -1576,11 +1580,11 @@ private:
             }
             m_code.push_back( { s, map_word(istring(L"@literal")), v, m_lines } );
         }else
-        if(*c==L'{' && *(c+len-1)==L'}'){
+        if(*c==L'{' && *(c+len-1)==L'}' && m_option_json){
             istring s(c+1, len-2);
             m_code.push_back( { s, map_word(istring(L"@json_obj")), _variant_t(), m_lines } );
         }else
-        if(*c==L'[' && *(c+len-1)==L']'){
+        if(*c==L'[' && *(c+len-1)==L']' && m_option_json){
             istring s(c+1, len-2);
             m_code.push_back( { s, map_word(istring(L"@json_ary")), _variant_t(), m_lines } );
         }else
@@ -1693,6 +1697,7 @@ private:
 
 public:
     bool                            m_option_explicit;
+    bool                            m_option_json;
     istring                         m_name;
     std::vector<istring>            m_params;
     std::map<istring, dim_names_t>  m_dim_names;
@@ -1717,6 +1722,7 @@ public:
     //### this copy-constructor has error, check it.
     CProgram(const CProgram& r)
         : m_option_explicit(r.m_option_explicit)
+        , m_option_json(r.m_option_json)
         , m_name(r.m_name)
         , m_params(r.m_params)
         , m_dim_names(r.m_dim_names)
@@ -1773,6 +1779,7 @@ public:
     CProgram(const wchar_t*& c, mode_t mode=&CProgram::parse_, CProgram* parent=nullptr)
         : m_parse_mode(mode)
         , m_option_explicit(false)
+        , m_option_json(false)
         , m_consts{
             {L"true"   , _variant_t{ {{{VT_BOOL,0,0,0,{VARIANT_TRUE}}}} } },
             {L"false"  , _variant_t{ {{{VT_BOOL,0,0,0,{VARIANT_FALSE}}}} }},

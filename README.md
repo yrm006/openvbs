@@ -9,7 +9,7 @@ This is a script engine for the modern BASIC powered by the Jujube (self made) c
 ## Sample.obs
 Bingo Machine:
 
-    option explicit: randomize:
+    option explicit: option json: randomize:
 
     dim machine = BingoMachine({})
     machine.shuffle(1000)
