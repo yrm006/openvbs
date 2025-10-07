@@ -2692,7 +2692,19 @@ private:
     ULONG       m_refc   = 1;
 
 public:
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    HRESULT QueryInterface(REFIID riid, void** ppvObject){
+		if(::IsEqualGUID(riid, IID_IClassFactory)){
+			*ppvObject = (IClassFactory*)this;
+		}else{
+OLECHAR buf[256];
+::StringFromGUID2(riid, buf, 256);
+fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
+			return E_NOTIMPL;
+		}
+
+		this->AddRef();
+		return S_OK;
+    }
     ULONG AddRef(){ return ++m_refc; }
     ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
