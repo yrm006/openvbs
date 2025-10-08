@@ -2561,7 +2561,8 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 // SCRIPTITEM_CODEONLY
 fprintf(flog, "%s: %ls %x\n", __func__, pstrName, dwFlags); fflush(flog);
 		IUnknown* p = nullptr;
-		if( SUCCEEDED(m_pSite->GetItemInfo(pstrName, SCRIPTINFO_IUNKNOWN, &p, nullptr)) ){
+		ITypeInfo* pType = nullptr;
+		if( SUCCEEDED(m_pSite->GetItemInfo(pstrName, SCRIPTINFO_IUNKNOWN, &p, &pType)) ){
 			IDispatch* pd = nullptr;
 			if( SUCCEEDED(p->QueryInterface(IID_IDispatch, (void**)&pd)) ){
 				m_ext[pstrName] = (IDispatch*)pd;
