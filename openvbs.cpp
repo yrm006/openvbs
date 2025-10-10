@@ -2696,7 +2696,11 @@ public:
     HRESULT QueryInterface(REFIID riid, void** ppvObject){
 		if(::IsEqualGUID(riid, IID_IClassFactory)){
 			*ppvObject = (IClassFactory*)this;
-		}else{
+		}else
+		if(::IsEqualGUID(riid, IID_IUnknown)){
+			*ppvObject = (IClassFactory*)this;
+		}else
+        {
 OLECHAR buf[256];
 ::StringFromGUID2(riid, buf, 256);
 fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
