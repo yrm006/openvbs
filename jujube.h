@@ -1778,8 +1778,8 @@ public:
 
     CProgram(const wchar_t*& c, mode_t mode=&CProgram::parse_, CProgram* parent=nullptr)
         : m_parse_mode(mode)
-        , m_option_explicit(false)
-        , m_option_json(false)
+        , m_option_explicit(parent ? parent->m_option_explicit : false)
+        , m_option_json(parent ? parent->m_option_json : false)
         , m_consts{
             {L"true"   , _variant_t{ {{{VT_BOOL,0,0,0,{VARIANT_TRUE}}}} } },
             {L"false"  , _variant_t{ {{{VT_BOOL,0,0,0,{VARIANT_FALSE}}}} }},
