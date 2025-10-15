@@ -3803,9 +3803,11 @@ private:
     }
 
     bool clock_throw_unknownname(word_t& pc){
+        wchar_t buf[256];
+        swprintf(buf, 256, L"Unknown name '%ls'", pc.s.c_str());
         m_err->wCode = 500;
         SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
-        SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Unknown name");
+        SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(buf);
         return (this->*m_onerr.back())();
     }
 
