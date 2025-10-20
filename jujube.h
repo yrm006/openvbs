@@ -1408,6 +1408,10 @@ private:
     }
 
     const wchar_t* parse_(const wchar_t* c, size_t len){
+        if( m_code.back().p == map_word(istring(L".")) ){
+            istring s(c, len);
+            m_code.push_back( { s, map_word(s), _variant_t(), m_lines } );
+        }else
         if(len == 6 && _wcsnicmp(L"option", c, len) == 0){
             istring s(c, len);
             m_code.push_back( { s, map_word(s), _variant_t(), m_lines } );
