@@ -3,23 +3,23 @@ all: oscript.exe openvbs.dll REGEXP.dll GUI.dll OPENASP.dll
 	@echo DONE
 
 oscript.exe:
-	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS oscript.cpp jujube.cpp npole.cpp /link /DEF:oscript.def
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS oscript.cpp jujube.cpp npole.cpp /link /OPT:NOICF /DEF:oscript.def
 	del *.obj *.lib *.exp
 
 openvbs.dll:
-	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS openvbs.cpp jujube.cpp npole.cpp /link /DLL /OUT:openvbs.dll /DEF:openvbs.def advapi32.lib Ole32.lib
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS openvbs.cpp jujube.cpp npole.cpp /link /OPT:NOICF /DLL /OUT:openvbs.dll /DEF:openvbs.def advapi32.lib Ole32.lib
 	del *.obj *.lib *.exp
 
 REGEXP.dll:
-	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS REGEXP.cpp /link /DLL /OUT:REGEXP.dll /DEF:REGEXP.def
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS REGEXP.cpp /link /OPT:NOICF /DLL /OUT:REGEXP.dll /DEF:REGEXP.def
 	del *.obj *.lib *.exp
 
 GUI.dll:
-	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS GUI.cpp /link /DLL /OUT:GUI.dll /DEF:GUI.def
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS GUI.cpp /link /OPT:NOICF /DLL /OUT:GUI.dll /DEF:GUI.def
 	del *.obj *.lib *.exp
 
 OPENASP.dll:
-	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS /MT /TP OPENASP.cpp /TP jujube.cpp /TP npole.cpp http.c websocket.c cocoserve.c /link /DLL /OUT:OPENASP.dll /DEF:OPENASP.def ws2_32.lib
+	cl /Ox /EHa /D_CRT_STDIO_ISO_WIDE_SPECIFIERS /MT /TP OPENASP.cpp /TP jujube.cpp /TP npole.cpp http.c websocket.c cocoserve.c /link /OPT:NOICF /DLL /OUT:OPENASP.dll /DEF:OPENASP.def ws2_32.lib
 	del *.obj *.lib *.exp
 
 clean:
