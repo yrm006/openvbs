@@ -2442,9 +2442,8 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		/* [out] */ __RPC__out EXCEPINFO *pexcepinfo
 	){
 fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
-        if(0x10000 < wcslen(pstrCode)) return E_FAIL;
+        wchar_t* buf = (wchar_t*)malloc( sizeof(wchar_t) * (wcslen(pstrCode)+1) );
 
-        wchar_t buf[0x10000];
         int i=0, j=0;
         while(pstrCode[j]){
             if(pstrCode[j] == '\r'){
@@ -2462,6 +2461,8 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		m_pProg = new CProgram(code);
         if(m_pPrcs) delete m_pPrcs;
         m_pPrcs = new CProcessor(m_pProg, &m_vbs, &m_ext);
+
+        free(buf);
 
 		return S_OK;
 	}
