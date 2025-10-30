@@ -4849,8 +4849,17 @@ private:
         auto i = m_s.rbegin();
         while(!( i->wReserved1 == VTX_GROUND )){
             if(i->wReserved1 == VTX_INST){
+                int ni = 0;{
+                    auto i2 = i+1;
+                    while(!( i2->wReserved1 == VTX_GROUND )){
+                        if(i2->wReserved1 == VTX_INST) ++ni;
+                        ++i2;
+                    }
+                }
+
                 if(
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_equal &&
+                    ni == 0                                                     &&
                     (
                         *((inst_t*)i->byref) == &CProcessor::op_invoke    ||
                         *((inst_t*)i->byref) == &CProcessor::op_array     ||
