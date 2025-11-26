@@ -661,7 +661,10 @@ public:
         {
             int i = pDispParams->cArgs;
             while(i--){
-                VariantCopy(&data[pDispParams->cArgs-1-i], &pDispParams->rgvarg[i]);
+                VARIANT* pv = &pDispParams->rgvarg[i];
+                if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+                VariantCopy(&data[pDispParams->cArgs-1-i], pv);
             }
         }
         SafeArrayUnaccessData(sa);
