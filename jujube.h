@@ -2822,14 +2822,17 @@ private:
                 VARIANT* pn = (p+1)+i;
                 if(pn->vt == (VT_BYREF|VT_VARIANT)) pn = pn->pvarVal;
 
-                if(pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements <= pn->llVal){
-                    m_mode = &CProcessor::clock_throw_invalidindex;
-                    --m_pc;
-                    return false;
-                }
+                _variant_t v;
+                if( SUCCEEDED(VariantChangeType(&v, pn, 0, VT_I8)) ){
+                    if(pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements <= v.llVal){
+                        m_mode = &CProcessor::clock_throw_invalidindex;
+                        --m_pc;
+                        return false;
+                    }
 
-                m *= pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements;
-                n += m * pn->llVal;
+                    m *= pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements;
+                    n += m * v.llVal;
+                }
 
                 ++i;
             }
@@ -2838,13 +2841,16 @@ private:
                 VARIANT* pn = (p+1)+i;
                 if(pn->vt == (VT_BYREF|VT_VARIANT)) pn = pn->pvarVal;
 
-                if(pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements <= pn->llVal){
-                    m_mode = &CProcessor::clock_throw_invalidindex;
-                    --m_pc;
-                    return false;
-                }
+                _variant_t v;
+                if( SUCCEEDED(VariantChangeType(&v, pn, 0, VT_I8)) ){
+                    if(pa->parray->rgsabound[pa->parray->cDims-(i+1)].cElements <= v.llVal){
+                        m_mode = &CProcessor::clock_throw_invalidindex;
+                        --m_pc;
+                        return false;
+                    }
 
-                n += pn->llVal;
+                    n += v.llVal;
+                }
             }
         }
 

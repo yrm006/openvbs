@@ -303,9 +303,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __
 }
 
 HRESULT VarInt(LPVARIANT pvarIn, LPVARIANT pvarResult){
+    // Do NOT change VT
     if(pvarIn->vt == VT_R8){
-        pvarResult->vt = VT_I8;
-        pvarResult->llVal = (int64_t)pvarIn->dblVal - (pvarIn->dblVal < 0);
+        pvarResult->vt = VT_R8;
+        pvarResult->dblVal = (int64_t)pvarIn->dblVal - (pvarIn->dblVal < 0);
     }else
     if(pvarIn->vt == VT_I8){
         pvarResult->vt = VT_I8;
