@@ -75,7 +75,7 @@ public:
             }
         }
 
-        return E_FAIL;
+        return DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
@@ -2670,7 +2670,7 @@ fprintf(flog, "%s: %ls\n", __func__, *rgszNames); fflush(flog);
             *rgDispId = 1;
         }else
         {
-            return DISP_E_MEMBERNOTFOUND;
+            return DISP_E_UNKNOWNNAME;
         }
 
         return S_OK;

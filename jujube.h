@@ -383,7 +383,7 @@ public:
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
-            return DISP_E_MEMBERNOTFOUND;
+            return DISP_E_UNKNOWNNAME;
         }
 
         return S_OK;
@@ -542,7 +542,7 @@ public:
             *rgDispId = 11;
         }else
         {
-            return DISP_E_MEMBERNOTFOUND;
+            return DISP_E_UNKNOWNNAME;
         }
 
         return S_OK;
@@ -5616,8 +5616,14 @@ public:
         int i = 0;
         while(i<argn){
             if(i < prog.m_params.size()){
-                newscope[i+1].vt = (VT_BYREF|VT_VARIANT);
-                newscope[i+1].pvarVal = args+(argn-1-i);
+                VARIANT* pv = args + (argn - 1 - i);
+                if (pv->vt == (VT_BYREF | VT_VARIANT)) {
+                    newscope[i + 1] = *pv;
+                }
+                else {
+                    newscope[i + 1].vt = (VT_BYREF | VT_VARIANT);
+                    newscope[i + 1].pvarVal = pv;
+                }
             }else{
                 m_mode = &CProcessor::clock_throw_toomanyarg;
                 --m_pc;
@@ -5880,6 +5886,14 @@ public:
     }
 
     void Reset(){
+        m_pc = 0;
+        m_mode = &CProcessor::clock_;
+
+        m_cc = 0;
+        m_err.Attach( new Error() );
+
+
+
         m_scope.clear();
         m_scope.push_back( m_pp->m_dim_defs );
         m_pgdims = &m_scope.back();
@@ -5895,8 +5909,6 @@ public:
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
         m_s.clear();
-
-        m_pc = 0;
     }
 
 
@@ -5945,12 +5957,20 @@ public:
             }
         }
 
-        return (m_pvDispatching || m_pfDispatching || m_ppDispatching) ? S_OK : E_FAIL;
+        return (m_pvDispatching || m_pfDispatching || m_ppDispatching) ? S_OK : DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         HRESULT hr = DISP_E_MEMBERNOTFOUND;
+
+        int i = 0;
+        while (i < pDispParams->cArgs) {
+            pDispParams->rgvarg[i].wReserved1 = VTX_NONE;
+            pDispParams->rgvarg[i].wReserved2 = VTX_NONE;
+            pDispParams->rgvarg[i].wReserved3 = VTX_NONE;
+            ++i;
+        }
 
         if(dispIdMember == 0){
             //### if(m_pc == 0) (*this)(); else
