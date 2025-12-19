@@ -21,6 +21,7 @@
     #define DISP_E_MEMBERNOTFOUND 0x80020003
     #define DISP_E_BADPARAMCOUNT  0x8002000E
     #define DISP_E_DIVBYZERO      0x80020012
+    #define DISP_E_UNKNOWNNAME    0x80020006
 
     #define	DISPID_VALUE        ( 0)
     #define DISPID_UNKNOWN      (-1)
