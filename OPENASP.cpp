@@ -906,7 +906,7 @@ int  on_ws_handshake(SOCKET sock, context* ctx){
     1) ++i;
 
     char aPath[256];
-    sprintf(aPath, "wwwroot/%s", (ctx->hdr.m_pURI[i]) ? "" : &ctx->hdr.m_pURI[1]);
+    snprintf(aPath, sizeof(aPath), "wwwroot/%s", (ctx->hdr.m_pURI[i]) ? "" : &ctx->hdr.m_pURI[1]);
 
 	FILE* f = fopen(aPath, "r");
     if(f){
@@ -932,7 +932,7 @@ int  on_ws_connect(SOCKET sock, context* ctx){
                                                                                     {
                                                                                     uint32_t adr = ctx->from.sin_addr.s_addr;
                                                                                     char aBuf[3+1+3+1+3+1+3+1+5 +1];
-                                                                                    sprintf(aBuf, "%d.%d.%d.%d:%d" 
+                                                                                    snprintf(aBuf, sizeof(aBuf), "%d.%d.%d.%d:%d" 
                                                                                         , adr>> 0&0xff
                                                                                         , adr>> 8&0xff
                                                                                         , adr>>16&0xff
@@ -947,7 +947,7 @@ int  on_ws_connect(SOCKET sock, context* ctx){
     {
         // check URI will already ended at on_ws_handshake.
         char aPath[256];
-        sprintf(aPath, "wwwroot/%s", &ctx->hdr.m_pURI[1]);
+        snprintf(aPath, sizeof(aPath), "wwwroot/%s", &ctx->hdr.m_pURI[1]);
 
 #ifdef _WIN32
         FILE* f = fopen(aPath, "rt,ccs=UTF-8");
@@ -1057,7 +1057,7 @@ int  on_http_request(SOCKET sock, context* ctx){
                                                                                     {
                                                                                     uint32_t adr = ctx->from.sin_addr.s_addr;
                                                                                     char aBuf[3+1+3+1+3+1+3+1+5 +1];
-                                                                                    sprintf(aBuf, "%d.%d.%d.%d:%d" 
+                                                                                    snprintf(aBuf, sizeof(aBuf), "%d.%d.%d.%d:%d" 
                                                                                         , adr>> 0&0xff
                                                                                         , adr>> 8&0xff
                                                                                         , adr>>16&0xff
@@ -1077,7 +1077,7 @@ int  on_http_request(SOCKET sock, context* ctx){
     1);
 
     char aPath[256];
-    sprintf(aPath, "wwwroot/%s", (ctx->hdr.m_pURI[i]) ? "" : &ctx->hdr.m_pURI[1]);
+    snprintf(aPath, sizeof(aPath), "wwwroot/%s", (ctx->hdr.m_pURI[i]) ? "" : &ctx->hdr.m_pURI[1]);
 
 #ifdef _WIN32
 	FILE* f = fopen(aPath, "rb");
