@@ -1318,7 +1318,6 @@ int  on_http_request_isp(SOCKET sock, context* ctx, FILE* f){
             CProgram oProgram(pSource);
 
             CProcessor oProcessor(&oProgram, &oScript, &oExt);
-            oProcessor.m_cc = 10000;
             
             hr = oProcessor();
 

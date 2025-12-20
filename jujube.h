@@ -4022,7 +4022,7 @@ private:
         return false;
     }
 
-    bool clock_throw_timeout(word_t& pc){
+    bool clock_throw_stop(word_t& pc){          // CURRENTLY NOT USED
         volatile int e=5;(void)e;// dummy now
         return false;
     }
@@ -5757,7 +5757,6 @@ private:
     }
 
 public:
-    size_t  m_cc;
     _err_ptr_t   m_err;
 
     CProcessor(CProgram* pp, IDispatch* env, CExtension* ext, size_t size=0x100)
@@ -5773,7 +5772,6 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
-        , m_cc(0)
         , m_err(new Error(), false)
     {
         m_scope.reserve(size);
@@ -5809,7 +5807,6 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
-        , m_cc(0)//### to ref
         , m_err(new Error(), false)
     {
         m_scope.reserve(parent.m_scope.capacity());
@@ -5851,7 +5848,6 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
-        , m_cc(0)//### to ref
         , m_err(new Error(), false)
     {
         m_scope.reserve(source.m_scope.capacity());
@@ -5988,13 +5984,7 @@ public:
             m_s.push_back(_variant_t());
             m_s.back().wReserved1 = VTX_GROUND;
 
-            if(m_cc){
-                while( (this->*m_mode)(m_pp->m_code[m_pc++]) ){
-                    if(!--m_cc) m_mode = &CProcessor::clock_throw_timeout;
-                }
-            }else{
-                while( (this->*m_mode)(m_pp->m_code[m_pc++]) );
-            }
+            while( (this->*m_mode)(m_pp->m_code[m_pc++]) );
         }catch(_com_error& e){
             hr = e.Error();
         }catch(...){
@@ -6104,15 +6094,6 @@ public:
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
                 SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Function not found");
-            }
-            hr = E_FAIL;
-        }else
-        if(m_mode == &CProcessor::clock_throw_timeout){
-            m_err->scode = 0x209;//#!#
-            m_err->dwHelpContext = last.l+1;
-            if(!m_err->wCode){
-                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
-                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Timeout");
             }
             hr = E_FAIL;
         }else
@@ -6260,7 +6241,6 @@ public:
         m_pc = 0;
         m_mode = &CProcessor::clock_;
 
-        m_cc = 0;
         m_err.Attach( new Error() );
 
 
