@@ -380,8 +380,8 @@ const std::map<istring, CProcessor::word_m> CProcessor::s_words = {
     {L"@class",        &CProcessor::word_class},
     {L"@ext",          &CProcessor::word_ext},
     {L"@env",          &CProcessor::word_env},
+    {L"@classfactory", &CProcessor::word_classfactory},
     {L"@",             &CProcessor::word_},
-    {L"_DUMP_",        &CProcessor::word_DUMP},
 };
 
 void* CProcessor::map_word(const istring& s){
@@ -427,7 +427,6 @@ const CProcessor::inst_t CProcessor::s_insts[] = {
     &CProcessor::op_array,
     &CProcessor::op_array_put,
     &CProcessor::op_getref,
-    &CProcessor::op_exit,
     &CProcessor::stmt_if,
     &CProcessor::stmt_selectcase,
     &CProcessor::stmt_case,

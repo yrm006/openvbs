@@ -73,6 +73,7 @@
     typedef GUID        IID;
     typedef GUID        CLSID;
     typedef CLSID*      LPCLSID;
+    typedef const GUID& REFGUID;
     typedef const CLSID& REFCLSID;
     typedef const IID&   REFIID;
     typedef uint16_t    VARTYPE;
@@ -333,6 +334,8 @@
     HRESULT CoGetObject(LPCWSTR pszName, BIND_OPTS *pBindOptions, REFIID riid, void **ppv);
     HRESULT CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
     void CoUninitialize();
+    inline int IsEqualGUID(REFGUID rguid1, REFGUID rguid2){ return !memcmp(&rguid1, &rguid2, sizeof(GUID)); }
+    #define IsEqualIID(iid1, iid2) IsEqualGUID(iid1, iid2)
 
     // oleaut
     HRESULT VarNot(LPVARIANT pvarIn, LPVARIANT pvarResult);
@@ -556,5 +559,6 @@ size_t utf8_wchar(wchar_t*, size_t, const char*);
 size_t wchar_utf8(char*, size_t, const wchar_t*);
 
 bool operator<(const _variant_t& l, const _variant_t& r);
+
 
 

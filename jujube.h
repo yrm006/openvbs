@@ -8,6 +8,15 @@
 
 
 
+// for degug
+#define DBG_IMPLEMENT_HERE(hint, hr) (fprintf(stdout, "###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, hint), hr)
+#define DBG_GUID(guid) \
+    fprintf(stdout, "###{%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",      \
+        guid.Data1, guid.Data2, guid.Data3,                                                           \
+        guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+
+
+
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
 #define NAME L"Jujube"
 
@@ -70,6 +79,7 @@ private:
 typedef std::basic_string<wchar_t, ichar_traits> istring;
 typedef std::map<istring, _variant_t> CExtension;
 typedef _com_ptr_t<_com_IIID<IDispatch, &IID_IDispatch> > _disp_ptr_t;
+typedef _com_ptr_t<_com_IIID<IEnumVARIANT, &IID_IEnumVARIANT> > _enum_ptr_t;
 class CProgram;
 typedef _com_ptr_t<_com_IIID<CProgram, &IID_NULL> > _prog_ptr_t;
 class Error;
@@ -79,24 +89,99 @@ struct word_t{ istring s; void* p; _variant_t v; size_t l; };
 
 
 
+class _dispparams_wrapper_t{
+private:
+    DISPPARAMS* m_target;
+    VARIANT*    m_pv;
+    _variant_t  m_default;
+
+public:
+    _dispparams_wrapper_t(DISPPARAMS* target)
+        : m_target(target)
+        , m_pv(nullptr)
+    {}
+    ~_dispparams_wrapper_t()
+    {}
+
+    UINT count(){
+        return m_target->cArgs;
+    }
+
+    _dispparams_wrapper_t& operator ()(int i){
+        int ii = m_target->cArgs - 1 - i;
+        if(0 <= ii){
+            m_pv = &m_target->rgvarg[ii];
+            if(m_pv->vt == (VT_BYREF|VT_VARIANT)) m_pv = m_pv->pvarVal;
+            return *this;
+        }
+
+        throw _com_error(E_INVALIDARG);
+    }
+
+    template<typename T>
+    _dispparams_wrapper_t& operator ()(int i, T dflt){
+        int ii = m_target->cArgs - 1 - i;
+        if(0 <= ii){
+            m_pv = &m_target->rgvarg[ii];
+            if(m_pv->vt == (VT_BYREF|VT_VARIANT)) m_pv = m_pv->pvarVal;
+            return *this;
+        }
+
+        m_default = dflt;
+        m_pv = &m_default;
+        return *this;
+    }
+
+    operator long long(){
+        if(m_pv->vt == VT_I8) return m_pv->llVal;
+        throw _com_error(E_INVALIDARG);
+    }
+
+    operator BSTR(){
+        if(m_pv->vt == VT_BSTR) return m_pv->bstrVal;
+        throw _com_error(E_INVALIDARG);
+    }
+
+    operator IDispatch*(){
+        if(m_pv->vt == VT_DISPATCH) return m_pv->pdispVal;
+        throw _com_error(E_INVALIDARG);
+    }
+
+    operator bool(){
+        if(m_pv->vt == VT_BOOL) return (m_pv->boolVal == VARIANT_TRUE);
+        throw _com_error(E_INVALIDARG);
+    }
+
+    operator VARIANT*(){
+        return m_pv;
+    }
+};
+
+
+
 class JSONObjectEnum : public IEnumVARIANT{
 private:
     ULONG       m_refc   = 1;
 
-    const std::map<std::wstring, _variant_t>& m_r;
+    _disp_ptr_t                                        m_hold;
+    const std::map<std::wstring, _variant_t>&          m_r;
     std::map<std::wstring, _variant_t>::const_iterator m_i;
 
 public:
-    JSONObjectEnum(const std::map<std::wstring, _variant_t>& r)
-        : m_r(r)
+    JSONObjectEnum(IDispatch* p, const std::map<std::wstring, _variant_t>& r)
+        : m_hold(p)
+        , m_r(r)
     {
+//printf("###%s\n", __func__);
         m_i = m_r.begin();
     }
-    virtual ~JSONObjectEnum(){/*wprintf(L"%s\n", __func__);*/}
+    virtual ~JSONObjectEnum(){
+//printf("###%s\n", __func__);
+    }
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
-        if( memcmp(&riid, &IID_IEnumVARIANT, sizeof(GUID)) == 0 ){
+        if( IsEqualIID(riid, IID_IEnumVARIANT) ){
             AddRef();
             *ppvObject = (IEnumVARIANT*)this;
         }else{
@@ -135,11 +220,14 @@ public:
     std::map<std::wstring, _variant_t> m_map;
 
 public:
-    JSONObject(){/*wprintf(L"%s\n", __func__);*/}
+    JSONObject(){}
     JSONObject(const wchar_t* json){
+//printf("###%s\n", __func__);
         from(json);
     }
-    virtual ~JSONObject(){};
+    virtual ~JSONObject(){
+//printf("###%s\n", __func__);
+    };
 
 public:
     bool from(const wchar_t* c);
@@ -256,7 +344,7 @@ public:
         }else
         if(dispIdMember == DISPID_NEWENUM){
             pVarResult->vt = VT_UNKNOWN;
-            pVarResult->punkVal = new JSONObjectEnum(m_map);
+            pVarResult->punkVal = new JSONObjectEnum(this, m_map);
         }else
         {
             return DISP_E_MEMBERNOTFOUND;
@@ -268,24 +356,31 @@ public:
 
 
 
+class JSONArray;
+
 class JSONArrayEnum : public IEnumVARIANT{
 private:
     ULONG       m_refc   = 1;
 
-    const std::vector<_variant_t>& m_r;
+    _disp_ptr_t                             m_hold;
+    const std::vector<_variant_t>&          m_r;
     std::vector<_variant_t>::const_iterator m_i;
 
 public:
-    JSONArrayEnum(const std::vector<_variant_t>& r)
-        : m_r(r)
+    JSONArrayEnum(IDispatch* p, const std::vector<_variant_t>& r)
+        : m_hold(p)
+        , m_r(r)
     {
+//printf("###%s\n", __func__);
         m_i = m_r.begin();
     }
-    virtual ~JSONArrayEnum(){/*wprintf(L"%s\n", __func__);*/}
+    virtual ~JSONArrayEnum(){
+//printf("###%s\n", __func__);
+    }
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
-        if( memcmp(&riid, &IID_IEnumVARIANT, sizeof(GUID)) == 0 ){
+        if( IsEqualIID(riid, IID_IEnumVARIANT) ){
             AddRef();
             *ppvObject = (IEnumVARIANT*)this;
         }else{
@@ -315,6 +410,14 @@ public:
 };
 
 class JSONArray : public IDispatch{
+public:
+    enum{
+        DISP_Item   = DISPID_VALUE,
+        DISP_length,
+        DISP_push,
+        DISP_forEach,
+    };
+
 private:
     ULONG       m_refc   = 1;
 
@@ -322,11 +425,14 @@ public:
     std::vector<_variant_t> m_vec;
 
 public:
-    JSONArray(){/*wprintf(L"%s\n", __func__);*/}
+    JSONArray(){}
     JSONArray(const wchar_t* json){
+//printf("###%s\n", __func__);
         from(json);
     }
-    virtual ~JSONArray(){};
+    virtual ~JSONArray(){
+//printf("###%s\n", __func__);
+    };
 
 public:
     bool from(const wchar_t* c);
@@ -378,12 +484,20 @@ public:
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+        if(_wcsicmp(*rgszNames, L"Item") == 0){
+            *rgDispId = DISP_Item;
+        }else
         if(_wcsicmp(*rgszNames, L"length") == 0){
-            *rgDispId = 1;
+            *rgDispId = DISP_length;
+        }else
+        if(_wcsicmp(*rgszNames, L"push") == 0){
+            *rgDispId = DISP_push;
+        }else
+        if(_wcsicmp(*rgszNames, L"forEach") == 0){
+            *rgDispId = DISP_forEach;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
-            return DISP_E_UNKNOWNNAME;
+            return DBG_IMPLEMENT_HERE(*rgszNames, DISP_E_UNKNOWNNAME);
         }
 
         return S_OK;
@@ -391,7 +505,9 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-        if(dispIdMember == DISPID_VALUE){
+        _dispparams_wrapper_t params( pDispParams );
+
+        if(dispIdMember == DISP_Item){
             if(wFlags & DISPATCH_PROPERTYPUT){
                 if(1 < pDispParams->cArgs){
                     VARIANT* pv = &pDispParams->rgvarg[0];
@@ -399,7 +515,7 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
                     VARIANT* pi = &pDispParams->rgvarg[1];
                     if(pi->vt == (VT_BYREF|VT_VARIANT)) pi = pi->pvarVal;
 
-                    if(pi->vt == VT_I8){
+                    if(pi->vt == VT_I8 && (0 <= pi->llVal && pi->llVal < m_vec.size())){
                         VariantCopy(&m_vec[pi->llVal], pv);
                     }else{
                         return E_INVALIDARG;
@@ -431,14 +547,34 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
                 }
             }
         }else
-        if(dispIdMember == DISPID_NEWENUM){
-            pVarResult->vt = VT_UNKNOWN;
-            pVarResult->punkVal = new JSONArrayEnum(m_vec);
-        }else
-        if(dispIdMember == 1){
+        if(dispIdMember == DISP_length){
             pVarResult->vt = VT_I8;
             pVarResult->llVal = m_vec.size();
-        }else{
+        }else
+        if(dispIdMember == DISP_push){
+            VARIANT* pv = &pDispParams->rgvarg[0];
+            if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
+
+            m_vec.push_back((_variant_t)*pv);
+        }else
+        if(dispIdMember == DISP_forEach && wFlags&DISPATCH_METHOD){
+            IDispatch* p0 = (IDispatch*)params(0);
+
+            HRESULT hr = S_OK;
+
+            {auto i = m_vec.begin(); while(i != m_vec.end() && SUCCEEDED(hr)){
+                DISPPARAMS param = { &*i, nullptr, 1, 0 };
+                _variant_t v;
+                hr = p0->Invoke(DISPID_VALUE, IID_NULL, 0, DISPATCH_METHOD, &param, &v, nullptr, nullptr);
+            ++i;}}
+
+            return hr;
+        }else
+        if(dispIdMember == DISPID_NEWENUM){
+            pVarResult->vt = VT_UNKNOWN;
+            pVarResult->punkVal = new JSONArrayEnum(this, m_vec);
+        }else
+        {
             return DISP_E_MEMBERNOTFOUND;
         }
 
@@ -446,6 +582,73 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
     }
 };
 
+
+
+class SafeArrayEnum : public IEnumVARIANT{
+private:
+    ULONG       m_refc   = 1;
+
+    SAFEARRAY*  m_psa;
+    VARIANT*    m_p      = NULL;
+    int         m_i;
+
+public:
+    SafeArrayEnum(SAFEARRAY* psa)
+        : m_psa(psa)
+    {}
+    virtual ~SafeArrayEnum(){
+        if(m_p){
+            SafeArrayUnaccessData(m_psa);
+        }
+    }
+
+    HRESULT Prepare(){
+        if(m_p){
+            return E_FAIL;
+        }else
+        if(SUCCEEDED(SafeArrayAccessData(m_psa, (void**)&m_p))){
+            m_i = 0;
+        }else{
+            return E_FAIL;
+        }
+        return S_OK;
+    }
+
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
+        if( IsEqualIID(riid, IID_IEnumVARIANT) ){
+            if(m_p){
+                AddRef();
+                *ppvObject = (IEnumVARIANT*)this;
+            }else{
+                return E_FAIL;
+            }
+        }else{
+            return E_NOINTERFACE;
+        }
+
+        return S_OK;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+
+    HRESULT STDMETHODCALLTYPE Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched){
+        ULONG i = 0;
+        while(i < celt && m_i < m_psa->rgsabound[0].cElements){
+            VariantCopy(rgVar+i, m_p+m_i);
+            ++m_i;
+            ++i;
+        }
+
+        if(pCeltFetched) *pCeltFetched = i;
+
+        return (i == celt) ? S_OK : S_FALSE;
+    }
+    HRESULT STDMETHODCALLTYPE Skip(ULONG celt){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE Reset(){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE Clone(IEnumVARIANT **ppEnum){ return E_NOTIMPL; }
+};
 
 
 
@@ -457,9 +660,7 @@ private:
 public:
     WeakDispatch(IDispatch* pdisp)
         : m_pdisp(pdisp)
-    {
-        // wprintf(L"%s\n", __func__);
-    }
+    {}
     virtual ~WeakDispatch(){};
 
 public:
@@ -561,6 +762,7 @@ public:
         }else
         if(dispIdMember == 2){
             if(wFlags & DISPATCH_PROPERTYPUT){
+                SysFreeString(this->bstrSource);
                 this->bstrSource = SysAllocString(pDispParams->rgvarg->bstrVal);
             }else{
                 *((_variant_t*)pVarResult) = this->bstrSource;
@@ -570,6 +772,7 @@ public:
         }else
         if(dispIdMember == 3){
             if(wFlags & DISPATCH_PROPERTYPUT){
+                SysFreeString(this->bstrDescription);
                 this->bstrDescription = SysAllocString(pDispParams->rgvarg->bstrVal);
             }else{
                 *((_variant_t*)pVarResult) = this->bstrDescription;
@@ -796,12 +999,14 @@ private:
         {
             parse_dim_name = istring(c, len);
 
-            auto n = m_dim_names.size();
-            auto i = m_dim_names.insert({parse_dim_name, {DSC_PUBLIC, n, m_lines}});
-            if(i.second){
+            if(m_dim_names.find(parse_dim_name) == m_dim_names.end()){
+                auto n = m_dim_defs.size();
+                auto i = m_dim_names.insert({parse_dim_name, {DSC_PUBLIC, n, m_lines}});
+                (void)i;
                 m_dim_defs.push_back( _variant_t() );
             }else{
                 //#!# re-definition
+                m_dim_defs.push_back( _variant_t() );   //#!# ZANTEI
             }
         }
 
@@ -892,6 +1097,18 @@ private:
     istring parse_const_name;
     bool    parse_const_positive;
 
+    const wchar_t* parse_const_colon(const wchar_t* c, size_t len){
+        if(len == 1 && (*c == L'\n' || *c == L':')){
+            m_parse_mode = &CProgram::parse_;
+            if(*c == L'\n') ++m_lines;
+        }else
+        {
+            m_parse_mode = nullptr;
+        }
+
+        return c+len;
+    }
+
     const wchar_t* parse_const_literal(const wchar_t* c, size_t len){
         if(
             (len == 1 && *c == L'=')                    ||
@@ -904,10 +1121,6 @@ private:
         }else
         if(len == 1 && *c == L'-'){
             parse_const_positive = false;
-        }else
-        if(len == 1 && (*c == L'\n' || *c == L':')){
-            m_parse_mode = &CProgram::parse_;
-            if(*c == L'\n') ++m_lines;
         }else
         {
             _variant_t v;
@@ -988,8 +1201,10 @@ private:
             auto i = m_consts.insert({parse_const_name, v});
             if(i.second){
                 // OK
+                m_parse_mode = &CProgram::parse_const_colon;
             }else{
-                //#!# re-definition
+                // re-definition
+                m_parse_mode = nullptr;
             }
         }
 
@@ -1929,11 +2144,11 @@ public:
 
 
         if(!m_parent) bind();
-// wprintf(L"$$$%s: %ls\n", __func__, m_name.c_str());
+//wprintf(L"$$$%s:%ls, c:%s, mode:%p\n", __func__, m_name.c_str(), c, m_parse_mode);
     }
 
     virtual ~CProgram(){
-// wprintf(L"$$$%s: %ls\n", __func__, m_name.c_str());
+//wprintf(L"$$$%s:%ls\n", __func__, m_name.c_str());
     }
 
     void dump(){
@@ -1987,8 +2202,14 @@ private:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){/*wprintf(L"%ls:+[%d]\n", m_name.c_str(), m_refc+1);*/ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){/*wprintf(L"%ls:-[%d]\n", m_name.c_str(), m_refc-1);*/ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){
+// wprintf(L"%ls:+[%d]\n", m_name.c_str(), m_refc+1);
+        return ++m_refc;
+    }
+    ULONG STDMETHODCALLTYPE Release(){
+// wprintf(L"%ls:-[%d]\n", m_name.c_str(), m_refc-1);
+        if(!--m_refc){ delete this; return 0; } return m_refc;
+    }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -2048,7 +2269,6 @@ public:
         INST_op_array,
         INST_op_array_put,
         INST_op_getref,
-        INST_op_exit,
         INST_stmt_if,
         INST_stmt_selectcase,
         INST_stmt_case,
@@ -2113,10 +2333,15 @@ private:
             VARIANT* pvL = p-(++i);
             VARIANT* pvR = &m_s.back();
 
-            if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-
             if(pvL->vt == (VT_BYREF|VT_VARIANT)){
-                VariantCopy(pvL->pvarVal, pvR);
+                if(pvR->vt == (VT_BYREF|VT_VARIANT)){
+                    VariantCopy(pvL->pvarVal, pvR->pvarVal);
+                }else{
+                    // move
+                    VariantClear(pvL->pvarVal);
+                    *pvL->pvarVal = *pvR;
+                    pvR->vt = VT_EMPTY;
+                }
             }else{
                 m_mode = &CProcessor::clock_throw_invalidcopy;
                 --m_pc;
@@ -2951,14 +3176,6 @@ private:
         return true;
     }
 
-    bool op_exit(VARIANT* p){
-        while(p-1 < &m_s.back()) m_s.pop_back();
-
-        m_mode = &CProcessor::clock_exit;
-        --m_pc;
-        return false;
-    }
-
     bool stmt_if(VARIANT* p){
         VARIANT* pv = p+1;
 
@@ -3067,7 +3284,8 @@ private:
         if(pvI->vt == (VT_BYREF|VT_VARIANT)) pvI = pvI->pvarVal;
         if(pvO->vt == (VT_BYREF|VT_VARIANT)) pvO = pvO->pvarVal;
 
-        _com_ptr_t<_com_IIID<IEnumVARIANT, &IID_IEnumVARIANT> > pe(*pvO);
+        _enum_ptr_t pe(*pvO);
+        VariantClear(pvI);
         ULONG n;
         _com_util::CheckError( pe->Next(1, pvI, &n) );
         if(n){
@@ -3095,14 +3313,28 @@ private:
 
         if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
 
-        DISPPARAMS param = {
-            nullptr,
-            nullptr,
-            0,
-            0,
-        };
         _variant_t res;
-        _com_util::CheckError( pv->pdispVal->Invoke(DISPID_NEWENUM, IID_NULL, 0, DISPATCH_METHOD, &param, &res, nullptr, nullptr) );
+        if(pv->vt == (VT_ARRAY|VT_VARIANT)){
+            SafeArrayEnum* e = new SafeArrayEnum(pv->parray);
+            if(SUCCEEDED(e->Prepare())){
+                res.vt = VT_UNKNOWN;
+                res.punkVal = e;
+            }else{
+                e->Release();
+                _com_util::CheckError( E_FAIL );
+            }
+        }else
+        if(pv->vt == VT_DISPATCH){
+            DISPPARAMS param = {
+                nullptr,
+                nullptr,
+                0,
+                0,
+            };
+            _com_util::CheckError( pv->pdispVal->Invoke(DISPID_NEWENUM, IID_NULL, 0, DISPATCH_METHOD, &param, &res, nullptr, nullptr) );
+        }else{
+            _com_util::CheckError( E_FAIL );
+        }
 
         while(p-1 < &m_s.back()) m_s.pop_back();
 
@@ -3346,13 +3578,25 @@ private:
         VARIANT* pv = p+1;
 
         _disp_ptr_t newo;
+        if(pv->vt == VT_UNKNOWN){
+            IDispatch* obj = NULL;
+            if(SUCCEEDED(((IClassFactory*)pv->punkVal)->CreateInstance(nullptr, IID_IDispatch, (void**)&obj))){
+                newo.Attach(obj);
+            }
+        }else
         if(pv->vt == VT_DISPATCH){
             newo = pv->pdispVal;
-        }else{
+        }else
+        if(pv->vt == VT_EMPTY && (pv->wReserved1 == VTX_CLASS || pv->wReserved1 == VTX_PROGRAM)){
             //#?# keep this ptr as parent-child
             CProcessor* pros = new CProcessor(*this, (CProgram*)pv->byref);
             pros->m_pc = pros->m_pp->m_code.size()-1;   // to don't-run by default
             newo.Attach(pros);
+        }else
+        {
+            m_mode = &CProcessor::clock_throw_;
+            --m_pc;
+            return false;
         }
 
         while(p-1 < &m_s.back()) m_s.pop_back();
@@ -3808,6 +4052,16 @@ private:
             m_err->wCode = 429;
             SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
             SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Bad class name");
+        }else
+        if(m_err->m_hr == E_INVALIDARG){
+            m_err->wCode = 5;
+            SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+            SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Invalid argument");
+        }else
+        if(!m_err->wCode){
+            m_err->wCode = 51;
+            SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+            SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
         }
         return (this->*m_onerr.back())();
     }
@@ -3840,6 +4094,11 @@ private:
             m_err->wCode = 11;
             SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
             SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Div by 0");
+        }else
+        if(!m_err->wCode){
+            m_err->wCode = 51;
+            SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+            SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
         }
         return (this->*m_onerr.back())();
     }
@@ -3849,7 +4108,7 @@ private:
     }
 
     bool clock_(word_t& pc){
-       return (this->*(*(word_m*)pc.p))(pc);
+        return (this->*(*(word_m*)pc.p))(pc);
     }
 
 private:
@@ -4737,7 +4996,7 @@ private:
         }
 
         _variant_t& lv = m_s.back();
-        if(lv.wReserved1 == VTX_INST && *((inst_t*)lv.byref) == &CProcessor::op_invoke && 1<ni){
+        if(lv.wReserved1 == VTX_INST && *((inst_t*)lv.byref) == &CProcessor::op_invoke && 1<ni && *((word_m*)(&pc-1)->p) != &CProcessor::word_parenL){
             do_left_invoke();
         }else
         if( 
@@ -4959,15 +5218,26 @@ private:
     }
 
     bool word_pdim(word_t& pc){
-        _variant_t& dim = m_scope.front()[pc.v.ullVal];
-        if(dim.vt & VT_BYREF){
+        _variant_t* dim = nullptr;
+        if(m_scope.front().size()){
+            dim = &m_scope.front()[pc.v.ullVal];
+        }else
+        if(m_pgdims){
+            dim = &(*m_pgdims)[pc.v.ullVal];
+        }
+
+        if(!dim){
+            m_mode = &CProcessor::clock_throw_;
+            return false;
+        }else
+        if(dim->vt & VT_BYREF){
             m_s.push_back(_variant_t());
-            *(VARIANT*)&m_s.back() = dim;
+            *(VARIANT*)&m_s.back() = *dim;
         }else
         {
             _variant_t v;
             v.vt = (VT_BYREF|VT_VARIANT);
-            v.pvarVal = &dim;
+            v.pvarVal = dim;
             m_s.push_back( v );
         }
 
@@ -5113,6 +5383,7 @@ private:
             }
         }
 
+        m_mode = &CProcessor::clock_exit;
         return false;
     }
 
@@ -5228,6 +5499,17 @@ private:
         return true;
     }
 
+    bool word_classfactory(word_t& pc){
+        {
+            _variant_t v;
+            v.vt = VT_UNKNOWN;
+            (v.punkVal = pc.v.punkVal)->AddRef();
+            m_s.push_back( v );
+        }
+
+        return true;
+    }
+
     bool word_redim(word_t& pc){
         {
             _variant_t v;
@@ -5274,11 +5556,6 @@ private:
         m_onerr.back() = &CProcessor::onerr_goto0;
         m_err->Clear();
 
-        return true;
-    }
-
-    bool word_DUMP(word_t& pc){
-        dump();
         return true;
     }
 
@@ -5334,16 +5611,13 @@ private:
                             }
                         }
                     }
-                }else{
+                }else
+                if(*((word_m*)(i-1)->p) == &CProcessor::word_new){
                     auto pfuncs = pp->m_parent ? &pp->m_parent->m_funcs : &pp->m_funcs;
                     auto gfuncs = &pp->m_granpa->m_funcs;
                     decltype(CProgram::m_funcs)::const_iterator foundF;
                     auto pclasses = &pp->m_granpa->m_classes;
                     decltype(CProgram::m_classes)::const_iterator foundA;
-                    auto ext = m_ext->find(i->s);
-                    DISPID id;
-                    LPOLESTR name = (LPOLESTR)i->s.c_str();
-                    HRESULT hr;
 
                     if((foundF = pfuncs->find(i->s)) != pfuncs->end()){
                         {
@@ -5369,6 +5643,55 @@ private:
                             i->v.byref = foundA->second;
                         }
                     }else
+                    {
+                        LPOLESTR name = (LPOLESTR)i->s.c_str();
+
+                        wchar_t path[256];{
+                            wcsncpy(path, name, 256)[255] = L'\0';
+                            for(size_t i=0; path[i]; ++i) path[i] = towupper(path[i]);
+                        }
+
+                        HMODULE hm = LoadLibraryW(path);
+                        if(hm){
+                            LPFNGETCLASSOBJECT pfn =  (LPFNGETCLASSOBJECT)GetProcAddress(hm, "DllGetClassObject");
+                            if(pfn){
+                                IClassFactory* cf = nullptr;
+                                if( SUCCEEDED(pfn(CLSID_NULL, IID_IClassFactory, (void**)&cf)) ){
+                                    {
+                                        i->p = map_word(L"@classfactory");
+
+                                        i->v.vt = VT_UNKNOWN;
+                                        i->v.punkVal = cf;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }else{
+                    auto pfuncs = pp->m_parent ? &pp->m_parent->m_funcs : &pp->m_funcs;
+                    auto gfuncs = &pp->m_granpa->m_funcs;
+                    decltype(CProgram::m_funcs)::const_iterator foundF;
+                    auto ext = m_ext->find(i->s);
+                    DISPID id;
+                    LPOLESTR name = (LPOLESTR)i->s.c_str();
+                    HRESULT hr;
+
+                    if((foundF = pfuncs->find(i->s)) != pfuncs->end()){
+                        {
+                            i->p = map_word(L"@func");
+                            i->v.vt = VT_EMPTY;
+                            i->v.wReserved1 = VTX_PROGRAM;
+                            i->v.byref = foundF->second.p;
+                        }
+                    }else
+                    if(gfuncs && (foundF = gfuncs->find(i->s)) != gfuncs->end()){
+                        {
+                            i->p = map_word(L"@func");
+                            i->v.vt = VT_EMPTY;
+                            i->v.wReserved1 = VTX_PROGRAM;
+                            i->v.byref = foundF->second.p;
+                        }
+                    }else
                     if(ext != m_ext->end()){
                         i->p = map_word(L"@ext");
 
@@ -5387,6 +5710,7 @@ private:
                             i->v.vt = VT_I4;
                             i->v.lVal = id;
                         }else{
+                            //S_FALSE
                             i->p = map_word(L"@literal");
                             m_env->Invoke(id, IID_NULL, 0, 0, nullptr, &i->v, nullptr, nullptr);
                         }
@@ -5536,7 +5860,7 @@ public:
 
         m_autodim.reserve(source.m_autodim.capacity());
         m_autodim.push_back( {} );
-        m_pgdims = source.m_pgdims;
+        m_pgadims = source.m_pgadims;
 
         m_with.reserve(source.m_with.capacity());
         m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
@@ -5616,29 +5940,21 @@ public:
         int i = 0;
         while(i<argn){
             if(i < prog.m_params.size()){
-                VARIANT* pv = args + (argn - 1 - i);
-                if (pv->vt == (VT_BYREF | VT_VARIANT)) {
-                    newscope[i + 1] = *pv;
-                }
-                else {
-                    newscope[i + 1].vt = (VT_BYREF | VT_VARIANT);
-                    newscope[i + 1].pvarVal = pv;
+                VARIANT* pv = args+(argn-1-i);
+                if(pv->vt == (VT_BYREF|VT_VARIANT)){
+                    newscope[i+1] = *pv;
+                }else{
+                    newscope[i+1].vt = (VT_BYREF|VT_VARIANT);
+                    newscope[i+1].pvarVal = pv;
                 }
             }else{
                 m_mode = &CProcessor::clock_throw_toomanyarg;
                 --m_pc;
-                return false;
+                return E_INVALIDARG;
             }
             ++i;
         }
         
-        //#?# no need this stack push?
-        if(m_s.size()){
-            _variant_t v;
-            v.wReserved1 = VTX_INST;
-            v.byref = (void*)&s_insts[INST_op_exit];
-            m_s.push_back( v );
-        }
         {
             m_s.push_back( _variant_t() );
 
@@ -5691,8 +6007,64 @@ public:
 
 
 
+        if(hr == DISP_E_DIVBYZERO){
+            m_err->scode = 0x307;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Divide by 0");
+            }
+        }else
+        if(hr == DISP_E_BADPARAMCOUNT){
+            m_err->scode = 0x306;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Bad param count");
+            }
+        }else
+        if(hr == DISP_E_MEMBERNOTFOUND){
+            m_err->scode = 0x305;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Member not found");
+            }
+        }else
+        if(hr == CO_E_CLASSSTRING){
+            m_err->scode = 0x304;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Class not found");
+            }
+        }else
+        if(hr == E_NOINTERFACE){
+            m_err->scode = 0x303;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"No interface");
+            }
+        }else
+        if(hr == E_INVALIDARG){
+            m_err->scode = 0x302;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Invalid arguments");
+            }
+        }else
+        if(hr == E_NOTIMPL){
+            m_err->scode = 0x301;
+            m_err->dwHelpContext = last.l+1;
+            if(!m_err->wCode){
+                SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+                SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Not implemented");
+            }
+        }else
         if(hr != S_OK){
-            m_err->scode = 0x003;
+            m_err->scode = 0x300;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5736,7 +6108,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_throw_timeout){
-            m_err->scode = 0x205;
+            m_err->scode = 0x209;//#!#
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5745,7 +6117,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_throw_cantgotothere){
-            m_err->scode = 0x206;
+            m_err->scode = 0x205;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5754,7 +6126,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_throw_invalidindex){
-            m_err->scode = 0x207;
+            m_err->scode = 0x206;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5763,7 +6135,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_throw_unexceptedend){
-            m_err->scode = 0x208;
+            m_err->scode = 0x207;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5772,12 +6144,12 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_throw_object){
-            m_err->scode = 0x209;
+            m_err->scode = 0x208;
             m_err->dwHelpContext = last.l+1;
             hr = m_err->m_hr;
         }else
         if(m_mode == &CProcessor::clock_skiptoelse){
-            m_err->scode = 0x101;
+            m_err->scode = 0x100;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5786,7 +6158,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptoendif){
-            m_err->scode = 0x102;
+            m_err->scode = 0x101;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5795,7 +6167,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptocase){
-            m_err->scode = 0x103;
+            m_err->scode = 0x102;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5804,7 +6176,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptoendselect){
-            m_err->scode = 0x104;
+            m_err->scode = 0x103;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5813,7 +6185,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptoloop){
-            m_err->scode = 0x105;
+            m_err->scode = 0x104;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5822,7 +6194,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptonext){
-            m_err->scode = 0x106;
+            m_err->scode = 0x105;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5831,7 +6203,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_skiptocatch){
-            m_err->scode = 0x107;
+            m_err->scode = 0x106;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5840,7 +6212,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_dispatch){
-            m_err->scode = 0x108;
+            m_err->scode = 0x107;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5849,13 +6221,12 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_exit){
-            m_mode = &CProcessor::clock_;   // no error & return to previous operator()
-        }else
-        if(*((word_m*)last.p) == &CProcessor::word_exit){
-            // no error
+            if(m_parent){
+                m_mode = &CProcessor::clock_;   // no error & return to previous operator()
+            }
         }else
         if(m_scope.size() == m_scope.capacity()){
-            m_err->scode = 0x004;
+            m_err->scode = 0x002;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -5864,7 +6235,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_s.size() == m_s.capacity()){
-            m_err->scode = 0x005;
+            m_err->scode = 0x003;
             m_err->dwHelpContext = last.l+1;
             if(!m_err->wCode){
                 SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
@@ -6007,6 +6378,16 @@ public:
                     if(SUCCEEDED( hr = (*this)(*m_pfDispatching, pDispParams->rgvarg, pDispParams->cArgs) )){
                         *pVarResult = m_s.back().Detach();
                         m_s.pop_back();
+
+                        if(m_mode == &CProcessor::clock_){
+                            //ok:none                           // for next invoke
+                        }else
+                        if(m_mode == &CProcessor::clock_exit){
+                            m_mode = &CProcessor::clock_;       // for next invoke
+                        }else
+                        {
+                            hr = DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
+                        }
                     }
                 }
             }
