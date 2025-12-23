@@ -18,6 +18,76 @@ FILE* flog = stdin; //'stdin' to dispose the debug message
 
 
 
+class ActiveScriptError : public EXCEPINFO, public IActiveScriptError{
+private:
+    ULONG   m_refc = 1;
+
+public:
+    ActiveScriptError(const EXCEPINFO& r){
+        wCode = r.wCode;
+        wReserved = r.wReserved;
+        bstrSource = SysAllocString(r.bstrSource);
+        bstrDescription = SysAllocString(r.bstrDescription);
+        bstrHelpFile = SysAllocString(r.bstrHelpFile);
+        dwHelpContext = r.dwHelpContext;
+        pvReserved = nullptr;
+        pfnDeferredFillIn = nullptr;
+        scode = r.scode;
+    }
+    virtual ~ActiveScriptError(){
+        SysFreeString(bstrSource);
+        SysFreeString(bstrDescription);
+        SysFreeString(bstrHelpFile);
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+        return E_NOTIMPL;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() { return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release() { if (!--m_refc) { delete this; return 0; } return m_refc; }
+
+    virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetExceptionInfo(
+        /* [out] */ EXCEPINFO* pexcepinfo)
+    {
+        pexcepinfo->wCode = wCode;
+        pexcepinfo->wReserved = wReserved;
+        pexcepinfo->bstrSource = SysAllocString(bstrSource);
+        pexcepinfo->bstrDescription = SysAllocString(bstrDescription);
+        pexcepinfo->bstrHelpFile = SysAllocString(bstrHelpFile);
+        pexcepinfo->dwHelpContext = dwHelpContext;
+        pexcepinfo->pvReserved = pvReserved;
+        pexcepinfo->pfnDeferredFillIn = pfnDeferredFillIn;
+        pexcepinfo->scode = scode;
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetSourcePosition(
+        /* [out] */ __RPC__out DWORD* pdwSourceContext,
+        /* [out] */ __RPC__out ULONG* pulLineNumber,
+        /* [out] */ __RPC__out LONG* plCharacterPosition)
+    {
+        *pdwSourceContext = 0;
+        *pulLineNumber = dwHelpContext;
+        *plCharacterPosition = 0;
+        return S_OK;
+    }
+
+    virtual HRESULT STDMETHODCALLTYPE GetSourceLineText(
+        /* [out] */ __RPC__deref_out_opt BSTR* pbstrSourceLine)
+    {
+        *pbstrSourceLine = SysAllocString(L"");
+        return S_OK;
+    }
+};
+
+
+
+
+
+
+
+
+
 class VBScript : public IDispatch{
 private:
     ULONG       m_refc   = 1;
@@ -2517,6 +2587,10 @@ fprintf(flog, "%s: SCRIPTSTATE_STARTED\n", __func__); fflush(flog);
 			if(FAILED(hr)){
 fprintf(flog, "  [!!!ERROR!!!] %ls in line:%d\n", m_pPrcs->m_err->bstrDescription, m_pPrcs->m_err->dwHelpContext); fflush(flog);
 				fwprintf(stderr, L"![0x%x]%ls in line:%d\n", hr, m_pPrcs->m_err->bstrDescription, m_pPrcs->m_err->dwHelpContext);
+
+                ActiveScriptError* perr = new ActiveScriptError( m_pPrcs->m_err );
+                m_pSite->OnScriptError(perr);
+                perr->Release();
 			}
 fprintf(flog, "  //\n"); fflush(flog);
 		}else
