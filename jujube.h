@@ -38,8 +38,9 @@ enum VARENUMX{
     VTX_PCFORLOOPUNTIL  = 0x21,
     VTX_POFORRETURN     = 0x22,
     VTX_PCFORRETURN     = 0x23,
-    VTX_PCFORNEXT       = 0x24,
-    VTX_RETURN          = 0x25,
+    VTX_IVFORRETURN     = 0x24,
+    VTX_PCFORNEXT       = 0x25,
+    VTX_RETURN          = 0x26,
 };
 
 enum DIMSCOPE{
@@ -82,6 +83,8 @@ typedef _com_ptr_t<_com_IIID<IDispatch, &IID_IDispatch> > _disp_ptr_t;
 typedef _com_ptr_t<_com_IIID<IEnumVARIANT, &IID_IEnumVARIANT> > _enum_ptr_t;
 class CProgram;
 typedef _com_ptr_t<_com_IIID<CProgram, &IID_NULL> > _prog_ptr_t;
+class CProcessor;
+typedef _com_ptr_t<_com_IIID<CProcessor, &IID_NULL> > _proc_ptr_t;
 class Error;
 typedef _com_ptr_t<_com_IIID<Error, &IID_NULL> > _err_ptr_t;
 
@@ -3013,6 +3016,12 @@ private:
         }
         {
             _variant_t v;
+            v.wReserved1 = VTX_IVFORRETURN;
+            v.boolVal = VARIANT_FALSE;
+            m_s.push_back(v);
+        }
+        {
+            _variant_t v;
             v.wReserved1 = VTX_POFORRETURN;
             v.byref = m_pp;
             m_s.push_back(v);
@@ -5360,6 +5369,9 @@ private:
                 m_pp = (CProgram*)m_s.back().byref;
                 m_s.pop_back();
 
+                bool fromInvoke = (m_s.back().boolVal == VARIANT_TRUE);
+                m_s.pop_back();
+
                 if( rets.size() ){
                     m_s.pop_back();
                     while( rets.size() ){
@@ -5379,7 +5391,11 @@ private:
                 m_with.pop_back();
                 m_onerr.pop_back();
 
-                return true;
+                if(fromInvoke){
+                    // none
+                }else{
+                    return true;
+                }
             }
         }
 
@@ -5470,7 +5486,7 @@ private:
         {
             _variant_t v;
             v.vt = VT_DISPATCH;
-            v.pdispVal = new CProcessor(*this);
+            (v.pdispVal = this)->AddRef();
             m_s.push_back( v );
         }
 
@@ -5960,6 +5976,12 @@ public:
         }
         {
             _variant_t v;
+            v.wReserved1 = VTX_IVFORRETURN;
+            v.boolVal = VARIANT_TRUE;
+            m_s.push_back(v);
+        }
+        {
+            _variant_t v;
             v.wReserved1 = VTX_POFORRETURN;
             v.byref = m_pp;
             m_s.push_back(v);
@@ -5991,11 +6013,9 @@ public:
             // none
         }
 
-        --m_pc;
-
-        word_t& last = m_pp->m_code[m_pc];
 
 
+        word_t& last = m_pp->m_code[m_pc ? m_pc-1 : 0];
 
         if(hr == DISP_E_DIVBYZERO){
             m_err->scode = 0x307;
@@ -6202,9 +6222,7 @@ public:
             hr = E_FAIL;
         }else
         if(m_mode == &CProcessor::clock_exit){
-            if(m_parent){
-                m_mode = &CProcessor::clock_;   // no error & return to previous operator()
-            }
+            m_mode = &CProcessor::clock_;   // no error & return to previous operator()
         }else
         if(m_scope.size() == m_scope.capacity()){
             m_err->scode = 0x002;
@@ -6358,23 +6376,9 @@ public:
                     if(SUCCEEDED( hr = (*this)(*m_pfDispatching, pDispParams->rgvarg, pDispParams->cArgs) )){
                         *pVarResult = m_s.back().Detach();
                         m_s.pop_back();
-
-                        if(m_mode == &CProcessor::clock_){
-                            //ok:none                           // for next invoke
-                        }else
-                        if(m_mode == &CProcessor::clock_exit){
-                            m_mode = &CProcessor::clock_;       // for next invoke
-                        }else
-                        {
-                            hr = DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
-                        }
                     }
                 }
             }
-        }
-
-        if(m_s.size()){
-            hr = E_INVALIDARG;
         }
 
         return hr;
