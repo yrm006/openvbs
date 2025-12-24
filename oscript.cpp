@@ -1488,6 +1488,27 @@ public:
         return S_OK;
     }
 
+    HRESULT vbChr(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        _variant_t vd1{ {{{VT_ERROR,0,0,0,{0}}}} };
+
+        int an = pDispParams->cArgs;
+        VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
+        if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        if(!( pv1->vt==VT_I8 )) return E_INVALIDARG;
+        if(!( 0x00<=pv1->llVal && pv1->llVal<0x100 )) return E_INVALIDARG;
+
+        BSTR s = SysAllocStringLen(nullptr, 1);
+        s[0] = pv1->llVal;
+
+        pVarResult->vt = VT_BSTR;
+        pVarResult->bstrVal = s;
+
+        return S_OK;
+    }
+
     HRESULT vbChrW(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
@@ -1504,6 +1525,24 @@ public:
 
         pVarResult->vt = VT_BSTR;
         pVarResult->bstrVal = s;
+
+        return S_OK;
+    }
+
+    HRESULT vbAsc(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        _variant_t vd1{ {{{VT_ERROR,0,0,0,{0}}}} };
+
+        int an = pDispParams->cArgs;
+        VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
+        if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        if(!( pv1->vt==VT_BSTR )) return E_INVALIDARG;
+        if(!( 0x00<=pv1->bstrVal[0] && pv1->bstrVal[0]<0x100 )) return E_INVALIDARG;
+
+        pVarResult->vt = VT_I8;
+        pVarResult->llVal = pv1->bstrVal[0];
 
         return S_OK;
     }
@@ -2205,7 +2244,9 @@ std::map<istring, DISPID> VBScript::s_disps_ids{
     {L"StrReverse",             s_disps_n++},
     {L"String",                 s_disps_n++},
     {L"Space",                  s_disps_n++},
+    {L"Chr",                    s_disps_n++},
     {L"ChrW",                   s_disps_n++},
+    {L"Asc",                    s_disps_n++},
     {L"AscW",                   s_disps_n++},
     {L"Oct",                    s_disps_n++},
     {L"Hex",                    s_disps_n++},
@@ -2342,7 +2383,9 @@ std::vector<_variant_t> VBScript::s_disps{
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbStrReverse}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbString}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSpace}).v}}}} },
+    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbChr}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbChrW}).v}}}} },
+    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAsc}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAscW}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbOct}).v}}}} },
     _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbHex}).v}}}} },
