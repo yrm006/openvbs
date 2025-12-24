@@ -71,7 +71,7 @@ public:
             }
         }
 
-        return E_FAIL;
+        return DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
@@ -2399,7 +2399,7 @@ public:
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
-            return DISP_E_MEMBERNOTFOUND;
+            return DISP_E_UNKNOWNNAME;
         }
 
         return S_OK;
