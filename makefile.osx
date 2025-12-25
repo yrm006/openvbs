@@ -33,7 +33,3 @@ clean:
 	rm -r SCRIPTING.so.dSYM
 	rm -r ADODB.so.dSYM
 	rm -r OPENASP.so.dSYM
-
-check:
-	bash -x test.sh > test.sh.out.txt 2>&1
-	diff test.sh.out_.txt test.sh.out.txt

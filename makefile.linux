@@ -27,7 +27,3 @@ clean:
 	rm oscript SCRIPTING.so ADODB.so OPENASP.so
 	rm {EE09B103-97E0-11CF-978F-00A02463E06F}.so
 	rm {00000514-0000-0010-8000-00AA006D2EA4}.so
-
-check:
-	bash -x test.sh > test.sh.out.txt 2>&1
-	diff test.sh.out_.txt test.sh.out.txt

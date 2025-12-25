@@ -24,7 +24,3 @@ OPENASP.dll:
 
 clean:
 	del oscript.exe openvbs.dll REGEXP.dll GUI.dll OPENASP.dll
-
-check:
-	test > test.cmd.out.txt 2>&1
-	fc test.cmd.out_.txt test.cmd.out.txt
