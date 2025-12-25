@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#define D18991230 693899.000000
+#define D18991230 (693899.0 * (60*60*24))
 
 const CLSID CLSID_NULL      = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
 const IID IID_NULL          = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
@@ -362,6 +362,18 @@ HRESULT VarPow(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->vt = VT_I8;
         pvarResult->llVal = pow(pvarLeft->llVal, pvarRight->llVal);
     }else
+    if(pvarLeft->vt == VT_R8 && pvarRight->vt == VT_R8){
+        pvarResult->vt = VT_R8;
+        pvarResult->dblVal = pow(pvarLeft->dblVal, pvarRight->dblVal);
+    }else
+    if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_R8){
+        pvarResult->vt = VT_R8;
+        pvarResult->dblVal = pow(pvarLeft->llVal, pvarRight->dblVal);
+    }else
+    if(pvarLeft->vt == VT_R8 && pvarRight->vt == VT_I8){
+        pvarResult->vt = VT_R8;
+        pvarResult->dblVal = pow(pvarLeft->dblVal, pvarRight->llVal);
+    }else
     {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
         return E_NOTIMPL;
@@ -375,11 +387,19 @@ HRESULT VarMul(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
     
     _variant_t vL;
+    if(pvarLeft->vt == VT_BOOL){
+        VariantChangeType(&vL, pvarLeft, 0, VT_I8);
+        pvarLeft = &vL;
+    }//and
     if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
         VariantChangeType(&vL, pvarLeft, 0, VT_R8);
         pvarLeft = &vL;
     }
     _variant_t vR;
+    if(pvarRight->vt == VT_BOOL){
+        VariantChangeType(&vL, pvarRight, 0, VT_I8);
+        pvarRight = &vL;
+    }//and
     if(pvarLeft->vt == VT_R8 && pvarRight->vt != VT_R8){
         VariantChangeType(&vR, pvarRight, 0, VT_R8);
         pvarRight = &vR;
@@ -459,11 +479,19 @@ HRESULT VarAdd(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
     
     _variant_t vL;
+    if(pvarRight->vt == VT_I8 && pvarLeft->vt != VT_I8){
+        VariantChangeType(&vL, pvarLeft, 0, VT_I8);
+        pvarLeft = &vL;
+    }else
     if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
         VariantChangeType(&vL, pvarLeft, 0, VT_R8);
         pvarLeft = &vL;
     }
     _variant_t vR;
+    if(pvarLeft->vt == VT_I8 && pvarRight->vt != VT_I8){
+        VariantChangeType(&vR, pvarRight, 0, VT_I8);
+        pvarRight = &vR;
+    }else
     if(pvarLeft->vt == VT_R8 && pvarRight->vt != VT_R8){
         VariantChangeType(&vR, pvarRight, 0, VT_R8);
         pvarRight = &vR;
@@ -592,13 +620,26 @@ HRESULT VarDateFromStr(LPCOLESTR strIn, LCID lcid, ULONG dwFlags, DATE *pdateOut
 }
 
 HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFlags, VARTYPE vt){
+    HRESULT hr = S_OK;
+
+    VARIANT bufDest; VariantInit(&bufDest);
+    if(pvargDest == pvarSrc){
+        pvargDest = &bufDest;
+    }
+
+    VariantClear(pvargDest);
+
     if(pvarSrc->vt == (VT_BYREF|VT_VARIANT)) pvarSrc = pvarSrc->pvarVal;
 
     if(pvarSrc->vt == vt){
-        return VariantCopy(pvargDest, pvarSrc);
+        hr = VariantCopy(pvargDest, pvarSrc);
     }else
     if(vt == VT_BSTR){
         if(pvarSrc->vt == VT_EMPTY){
+            pvargDest->vt = VT_BSTR;
+            pvargDest->bstrVal = SysAllocString(L"");
+        }else
+        if(pvarSrc->vt == VT_NULL){
             pvargDest->vt = VT_BSTR;
             pvargDest->bstrVal = SysAllocString(L"");
         }else
@@ -638,7 +679,7 @@ HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFl
         }else
         if(pvarSrc->vt == VT_R8){
             wchar_t buf[1+30 +1];
-            swprintf(buf, 1+30+1, L"%g", pvarSrc->dblVal);
+            swprintf(buf, 1+30+1, L"%.15g", pvarSrc->dblVal);
             pvargDest->vt = VT_BSTR;
             pvargDest->bstrVal = SysAllocString(buf);
         }else
@@ -659,9 +700,9 @@ HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFl
         if(pvarSrc->vt == VT_DISPATCH){
             DISPPARAMS param = { nullptr, nullptr, 0, 0 };
             _variant_t v;
-            HRESULT hr = pvarSrc->pdispVal->Invoke(0, IID_NULL, 0, DISPATCH_METHOD, &param, &v, nullptr, nullptr);
+            hr = pvarSrc->pdispVal->Invoke(0, IID_NULL, 0, DISPATCH_PROPERTYGET, &param, &v, nullptr, nullptr);
 
-            return SUCCEEDED(hr) ? VariantChangeType(pvargDest, &v, wFlags, vt) : hr;
+            hr = SUCCEEDED(hr) ? VariantChangeType(pvargDest, &v, wFlags, vt) : hr;
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -686,11 +727,13 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
                 b = VARIANT_FALSE;
             }else
             {
-                return E_INVALIDARG;
+                hr = E_INVALIDARG;
             }
 
-            pvargDest->vt = VT_BOOL;
-            pvargDest->boolVal = b;
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_BOOL;
+                pvargDest->boolVal = b;
+            }
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -706,13 +749,19 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->vt = VT_R8;
             pvargDest->dblVal = pvarSrc->llVal;
         }else
+        if(pvarSrc->vt == VT_BOOL){
+            pvargDest->vt = VT_R8;
+            pvargDest->dblVal = pvarSrc->boolVal;
+        }else
         if(pvarSrc->vt == VT_BSTR){
             wchar_t* pend;
             double dbl = wcstod(pvarSrc->bstrVal, &pend);
-            if(pvarSrc->bstrVal == pend) return E_INVALIDARG;
+            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
 
-            pvargDest->vt = VT_R8;
-            pvargDest->dblVal = dbl;
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_R8;
+                pvargDest->dblVal = dbl;
+            }
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -727,10 +776,12 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         if(pvarSrc->vt == VT_BSTR){
             wchar_t* pend;
             long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
-            if(pvarSrc->bstrVal == pend) return E_INVALIDARG;
+            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
 
-            pvargDest->vt = VT_I8;
-            pvargDest->llVal = ll;
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_I8;
+                pvargDest->llVal = ll;
+            }
         }else
         if(pvarSrc->vt == VT_I4){
             pvargDest->vt = VT_I8;
@@ -743,6 +794,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         if(pvarSrc->vt == VT_R8){
             pvargDest->vt = VT_I8;
             pvargDest->llVal = pvarSrc->dblVal;
+        }else
+        if(pvarSrc->vt == VT_BOOL){
+            pvargDest->vt = VT_I8;
+            pvargDest->llVal = pvarSrc->boolVal;
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -788,11 +843,12 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         }else
         if(pvarSrc->vt == VT_BSTR){
             DATE date;
-            HRESULT hr = VarDateFromStr(pvarSrc->bstrVal, 0, 0, &date);
-            if(FAILED(hr)) return hr;
+            hr = VarDateFromStr(pvarSrc->bstrVal, 0, 0, &date);
 
-            pvargDest->vt = VT_DATE;
-            pvargDest->date = date;
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_DATE;
+                pvargDest->date = date;
+            }
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -804,13 +860,24 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         return E_INVALIDARG;
     }
 
-    return S_OK;
+    if(SUCCEEDED(hr) && pvargDest == &bufDest){
+        pvargDest = (VARIANT*)pvarSrc;
+        VariantClear(pvargDest);
+        *pvargDest = bufDest;
+        bufDest.vt = VT_EMPTY;
+    }
+
+    return hr;
 }
 
 HRESULT VariantCopy(VARIANT *pvargDest, const VARIANT *pvargSrc){
     VariantClear(pvargDest);
     *pvargDest = *pvargSrc;
 
+    if(pvargDest->vt == VT_UNKNOWN){
+        if(pvargDest->punkVal)
+            pvargDest->punkVal->AddRef();
+    }else
     if(pvargDest->vt == VT_DISPATCH){
         if(pvargDest->pdispVal)
             pvargDest->pdispVal->AddRef();
@@ -826,6 +893,10 @@ HRESULT VariantCopy(VARIANT *pvargDest, const VARIANT *pvargSrc){
 }
 
 HRESULT VariantClear(VARIANT *pvarg){
+    if(pvarg->vt == VT_UNKNOWN){
+        if(pvarg->punkVal)
+            pvarg->punkVal->Release();
+    }else
     if(pvarg->vt == VT_DISPATCH){
         if(pvarg->pdispVal)
             pvarg->pdispVal->Release();
@@ -851,27 +922,43 @@ BSTR SysAllocString(const OLECHAR *psz){
     if(psz){
         size_t len = wcslen(psz);
         BYTE* p = (BYTE*)malloc(sizeof(size_t) + sizeof(wchar_t)*(len+1));
-        *(size_t*)p = len;
+        *(size_t*)p = len;                                      // is wchar-length
         ret = wcscpy( (BSTR)(p+sizeof(size_t)), psz );
     }
 
     return ret;
 }
 
-BSTR SysAllocStringLen(const OLECHAR *strIn, UINT ui){
-    BYTE* p = (BYTE*)malloc(sizeof(size_t) + sizeof(wchar_t)*(ui+1));
-    *(size_t*)p = ui;
+BSTR SysAllocStringLen(const OLECHAR *strIn, UINT len){
+    BYTE* p = (BYTE*)malloc(sizeof(size_t) + sizeof(wchar_t)*(len+1));
+    *(size_t*)p = len;                                          // is wchar-length
     BSTR ret = (BSTR)(p+sizeof(size_t));
     if(strIn){
-        memcpy( ret, strIn, sizeof(*strIn)*ui );
+        memcpy( ret, strIn, sizeof(*strIn)*len );
+    }else{
+        ret[0] = L'\0';
     }
-    ret[ui] = L'\0';
+    ret[len] = L'\0';
 
     return ret;
 }
 
-UINT SysStringLen(BSTR pbstr){
-    return pbstr ? *(size_t*)((BYTE*)pbstr-sizeof(size_t)) : 0;
+BSTR SysAllocStringByteLen(LPCSTR psz, UINT len){
+    BYTE* p = (BYTE*)malloc(sizeof(size_t) + len);
+    *(size_t*)p = len;                                          // is BYTE-length
+    BSTR ret = (BSTR)(p+sizeof(size_t));
+    if(psz){
+        memcpy( ret, psz, len );
+    }
+    return ret;
+}
+
+UINT SysStringLen(BSTR bstr){
+    return bstr ? *(size_t*)((BYTE*)bstr-sizeof(size_t)) : 0;   // is wchar-length
+}
+
+UINT SysStringByteLen(BSTR bstr){
+    return bstr ? *(size_t*)((BYTE*)bstr-sizeof(size_t)) : 0;   // is BYTE-length
 }
 
 void SysFreeString(BSTR bstrString){
@@ -881,74 +968,121 @@ void SysFreeString(BSTR bstrString){
 }
 
 SAFEARRAY* SafeArrayCreate(VARTYPE vt, UINT cDims, SAFEARRAYBOUND *rgsabound){
-    if(vt != VT_VARIANT) return nullptr;//###NOTIMPL
-
     ULONG total = 0;{
         UINT i=0;
         while(i<cDims) total += rgsabound[i++].cElements;
     }
 
-    VARIANT* data;{
-        data = (VARIANT*)malloc(sizeof(VARIANT)*total);
-        ULONG i=0;
-        while(i<total) VariantInit(&data[i++]);
+    if(vt == VT_VARIANT){
+        VARIANT* data;{
+            data = (VARIANT*)malloc(sizeof(VARIANT)*total);
+            ULONG i=0;
+            while(i<total) VariantInit(&data[i++]);
+        }
+
+        SAFEARRAY* psa = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*cDims);
+        {
+            psa->cDims = cDims;
+            psa->fFeatures = FADF_AUTO|FADF_VARIANT;
+            psa->cbElements = sizeof(VARIANT)*total;
+            psa->cLocks = 0;
+            psa->pvData = data;
+            memcpy(psa->rgsabound, rgsabound, sizeof(SAFEARRAYBOUND)*cDims);
+            psa->rgsabound[cDims].cElements = 0;
+            psa->rgsabound[cDims].lLbound = 0;
+        }
+
+        return psa;
+    }else
+    if(vt == VT_UI1){
+        BYTE* data;{
+            data = (BYTE*)malloc(sizeof(BYTE)*total);
+        }
+
+        SAFEARRAY* psa = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*cDims);
+        {
+            psa->cDims = cDims;
+            psa->fFeatures = FADF_AUTO;
+            psa->cbElements = sizeof(BYTE)*total;
+            psa->cLocks = 0;
+            psa->pvData = data;
+            memcpy(psa->rgsabound, rgsabound, sizeof(SAFEARRAYBOUND)*cDims);
+            psa->rgsabound[cDims].cElements = 0;
+            psa->rgsabound[cDims].lLbound = 0;
+        }
+
+        return psa;
     }
 
-    SAFEARRAY* psa = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*cDims);
-    {
-        psa->cDims = cDims;
-        psa->fFeatures = FADF_VARIANT;
-        psa->cbElements = sizeof(VARIANT)*total;
-        psa->cLocks = 0;
-        psa->pvData = data;
-        memcpy(psa->rgsabound, rgsabound, sizeof(SAFEARRAYBOUND)*cDims);
-        psa->rgsabound[cDims].cElements = 0;
-        psa->rgsabound[cDims].lLbound = 0;
-    }
+    return nullptr;
+}
 
-    return psa;
+SAFEARRAY* SafeArrayCreateVector(VARTYPE vt, LONG lLbound, ULONG cElements){
+    SAFEARRAYBOUND sab{ cElements, lLbound };
+    return SafeArrayCreate(vt, 1, &sab);
 }
 
 HRESULT SafeArrayCopy(SAFEARRAY *psa, SAFEARRAY **ppsaOut){
-    if(!(psa->fFeatures&FADF_VARIANT)) return E_NOTIMPL;
+    if(psa->fFeatures&FADF_VARIANT){
+        ULONG total = psa->cbElements/sizeof(VARIANT);
 
-    ULONG total = psa->cbElements/sizeof(VARIANT);
+        VARIANT* data;{
+            data = (VARIANT*)malloc(sizeof(VARIANT)*total);
+            ULONG i=0;
+            while(i<total) VariantInit(&data[i++]);
+            VARIANT* psrc = (VARIANT*)psa->pvData;
+            i=0;
+            while(i<total){ VariantCopy(&data[i], &psrc[i]); ++i; }
+        }
 
-    VARIANT* data;{
-        data = (VARIANT*)malloc(sizeof(VARIANT)*total);
-        ULONG i=0;
-        while(i<total) VariantInit(&data[i++]);
-        VARIANT* psrc = (VARIANT*)psa->pvData;
-        i=0;
-        while(i<total){ VariantCopy(&data[i], &psrc[i]); ++i; }
+        *ppsaOut = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*psa->cDims);
+        {
+            (*ppsaOut)->cDims = psa->cDims;
+            (*ppsaOut)->fFeatures = psa->fFeatures;
+            (*ppsaOut)->cbElements = psa->cbElements;
+            (*ppsaOut)->cLocks = 0;
+            (*ppsaOut)->pvData = data;
+            memcpy((*ppsaOut)->rgsabound, psa->rgsabound, sizeof(SAFEARRAYBOUND)*psa->cDims);
+            (*ppsaOut)->rgsabound[psa->cDims].cElements = 0;
+            (*ppsaOut)->rgsabound[psa->cDims].lLbound = 0;
+        }
+
+        return S_OK;
+    }else{
+        void* data;{
+            data = malloc(psa->cbElements);
+            memcpy(data, psa->pvData, psa->cbElements);
+        }
+
+        *ppsaOut = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*psa->cDims);
+        {
+            (*ppsaOut)->cDims = psa->cDims;
+            (*ppsaOut)->fFeatures = psa->fFeatures;
+            (*ppsaOut)->cbElements = psa->cbElements;
+            (*ppsaOut)->cLocks = 0;
+            (*ppsaOut)->pvData = data;
+            memcpy((*ppsaOut)->rgsabound, psa->rgsabound, sizeof(SAFEARRAYBOUND)*psa->cDims);
+            (*ppsaOut)->rgsabound[psa->cDims].cElements = 0;
+            (*ppsaOut)->rgsabound[psa->cDims].lLbound = 0;
+        }
+
+        return S_OK;
     }
-
-    *ppsaOut = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*psa->cDims);
-    {
-        (*ppsaOut)->cDims = psa->cDims;
-        (*ppsaOut)->fFeatures = psa->fFeatures;
-        (*ppsaOut)->cbElements = psa->cbElements;
-        (*ppsaOut)->cLocks = 0;
-        (*ppsaOut)->pvData = data;
-        memcpy((*ppsaOut)->rgsabound, psa->rgsabound, sizeof(SAFEARRAYBOUND)*psa->cDims);
-        (*ppsaOut)->rgsabound[psa->cDims].cElements = 0;
-        (*ppsaOut)->rgsabound[psa->cDims].lLbound = 0;
-    }
-
-    return S_OK;
 }
 
 HRESULT SafeArrayDestroy(SAFEARRAY *psa){
-    if(!(psa->fFeatures&FADF_VARIANT)) return E_NOTIMPL;
+    if(psa->fFeatures&FADF_VARIANT){
+        ULONG total = psa->cbElements/sizeof(VARIANT);
+        VARIANT* data = (VARIANT*)psa->pvData;
 
-    ULONG total = psa->cbElements/sizeof(VARIANT);
-    VARIANT* data = (VARIANT*)psa->pvData;
+        ULONG i=0;
+        while(i<total) VariantClear(&data[i++]);
+    }
 
-    ULONG i=0;
-    while(i<total) VariantClear(&data[i++]);
-
-    free(psa->pvData);
-    free(psa);
+    if(psa->fFeatures&FADF_AUTO){
+        free(psa->pvData);
+        free(psa);
+    }
 
     return S_OK;
 }
@@ -966,13 +1100,19 @@ HRESULT SafeArrayGetLBound(SAFEARRAY *psa, UINT nDim, LONG *plLbound){
 }
 
 HRESULT SafeArrayAccessData(SAFEARRAY  *psa, void **ppvData){
-    *ppvData = psa->pvData;
+    if(psa->cLocks){
+        // someone is using. (ex. IEnumVARIANT)
+        return E_FAIL;
+    }else{
+        ++psa->cLocks;
+        *ppvData = psa->pvData;
+    }
 
     return S_OK;
 }
 
 HRESULT SafeArrayUnaccessData(SAFEARRAY *psa){
-    // none
+    --psa->cLocks;
 
     return S_OK;
 }
@@ -1024,7 +1164,7 @@ double tm_double(tm t){
     uint64_t days = dy + du + dm + t.tm_mday - 1;
     uint64_t secs = 60*60*t.tm_hour + 60*t.tm_min + t.tm_sec;
 
-    return (double)days + (double)secs/(60*60*24) - D18991230;
+    return (double)days*(60*60*24) + (double)secs - D18991230;
 }
 
 tm double_tm(double d){
@@ -1035,7 +1175,7 @@ tm double_tm(double d){
 
     d += D18991230;
 
-    uint64_t dd = (uint64_t)d;
+    uint64_t dd = (uint64_t)d/(60*60*24);
     uint64_t y400 = dd / D400;
     uint64_t y100 = (dd%D400) / D100;
     uint64_t y4   = ((dd%D400)%D100) / D4;
@@ -1047,7 +1187,7 @@ tm double_tm(double d){
     t.tm_mday = ((((dd%D400)%D100)%D4)%D1) - (153*(t.tm_mon-3)+2)/5 + 1;
     t.tm_wday = -1;//###TODO
 
-    uint64_t ds = (d - dd) * (60*60*24);
+    uint64_t ds = (uint64_t)d%(60*60*24);
     t.tm_hour = ds / (60*60);
     t.tm_min  = (ds%(60*60)) / 60;
     t.tm_sec  = (ds%(60*60)) % 60;

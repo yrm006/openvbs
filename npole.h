@@ -115,7 +115,9 @@
         LONG lLbound;
     };
 
-    #define FADF_VARIANT        ( 0x800 )
+    #define FADF_AUTO          0x0001
+    #define FADF_FIXEDSIZE     0x0010
+    #define FADF_VARIANT       0x0800
 
     struct SAFEARRAY{
         USHORT cDims;
@@ -361,9 +363,12 @@
     void VariantInit(VARIANT *pvarg);
     BSTR SysAllocString(const OLECHAR *psz);
     BSTR SysAllocStringLen(const OLECHAR *strIn, UINT ui);
+    BSTR SysAllocStringByteLen(LPCSTR psz, UINT len);
     UINT SysStringLen(BSTR pbstr);
+    UINT SysStringByteLen(BSTR bstr);
     void SysFreeString(BSTR bstrString);
     SAFEARRAY* SafeArrayCreate(VARTYPE vt, UINT cDims, SAFEARRAYBOUND *rgsabound);
+    SAFEARRAY* SafeArrayCreateVector(VARTYPE vt, LONG lLbound, ULONG cElements);
     HRESULT SafeArrayCopy(SAFEARRAY *psa, SAFEARRAY **ppsaOut);
     HRESULT SafeArrayDestroy(SAFEARRAY *psa);
     HRESULT SafeArrayGetUBound(SAFEARRAY *psa, UINT nDim, LONG *plUbound);
