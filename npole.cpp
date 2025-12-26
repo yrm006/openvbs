@@ -1210,9 +1210,6 @@ size_t utf8_wchar(wchar_t* out, size_t outc, const char* in){
     size_t i = 0;
 
     while(*in && i<outc-1){
-        if(*in == '\r'){
-            ++in;
-        }else
         if((*(in+0)&0b10000000) == 0b00000000){
             if(outc) out[i] = *in;
             ++i;

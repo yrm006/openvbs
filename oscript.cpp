@@ -2537,6 +2537,23 @@ HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
 
 
 
+int removeCR(char aBuf[]){
+    int w=0, r=0;
+    while(aBuf[r]){
+        if(aBuf[r] == '\r'){
+            ++r;
+        }else{
+            aBuf[w] = aBuf[r];
+            ++w; ++r;
+        }
+    }
+    aBuf[w] = '\0';
+
+    return w;
+}
+
+
+
 int main(int argn, const char* argc[]){
 #ifdef _WIN32
     setlocale(LC_ALL, ".65001");
@@ -2586,6 +2603,7 @@ int main(int argn, const char* argc[]){
             // check size
             if(!aBuf[MAX_SIZE]){ fwprintf(stderr, L"!Max source size is %zd byte.\n", sizeof(aBuf)); return -1; };
 
+            removeCR(aBuf);
             if(!utf8_wchar(aSource, sizeof(aSource)/sizeof(aSource[0]), aBuf)){ fwprintf(stderr, L"!Need UTF8 format.\n"); return -1; }
 
             pSource = aSource;
@@ -2604,6 +2622,7 @@ int main(int argn, const char* argc[]){
         // check size
         if(!aBuf[MAX_SIZE]){ fwprintf(stderr, L"!Max source size is %zd byte.\n", sizeof(aBuf)); return -1; };
 
+        removeCR(aBuf);
         if(!utf8_wchar(aSource, sizeof(aSource)/sizeof(aSource[0]), aBuf)){ fwprintf(stderr, L"!Need UTF8 format.\n"); return -1; }
 
         pSource = aSource;
