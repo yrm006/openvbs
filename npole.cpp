@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#define D18991230 (693899.0 * (60*60*24))
+#define D18991230 693899.0
 
 const CLSID CLSID_NULL      = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
 const IID IID_NULL          = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
@@ -1193,56 +1193,59 @@ INT VariantTimeToSystemTime(DOUBLE vtime, LPSYSTEMTIME lpSystemTime){
 
 // others
 double tm_double(tm t){
-    t.tm_year += 1900;
-    t.tm_mon += 1;
+    long long y = (long long)t.tm_year + 1900;
 
-    if(t.tm_mon < 3){
-        --t.tm_year;
-        t.tm_mon += 12;
+    int m = t.tm_mon + 1;
+    if(m < 3){
+        --y;
+        m += 12;
     }
 
-    uint64_t dy = 365 * t.tm_year;
-    uint64_t du = t.tm_year/4 - t.tm_year/100 + t.tm_year/400;
-    uint64_t dm = (153*(t.tm_mon-3)+2)/5;
+    long long dy = 365 * y;
+    long long du = y/4 - y/100 + y/400;
+    long long dm = (153*(m-3)+2)/5;
 
-    uint64_t days = dy + du + dm + t.tm_mday - 1;
-    uint64_t secs = 60*60*t.tm_hour + 60*t.tm_min + t.tm_sec;
+    long long days = dy + du + dm + t.tm_mday - 1;
+    double secs =
+        (double)t.tm_hour * 3600.0 +
+        (double)t.tm_min  *   60.0 +
+        (double)t.tm_sec  *    1.0;
 
-    return (double)days*(60*60*24) + (double)secs - D18991230;
+    return ((double)days - D18991230) + (secs / 86400.0);
 }
 
-tm double_tm(double d){
-    const uint64_t D1   = 365;
-    const uint64_t D4   = D1*4+1;   // 1461
-    const uint64_t D100 = D4*25-1;  // 36524
-    const uint64_t D400 = D100*4+1; // 146097
+tm double_tm(double v){
+    double x = v + D18991230;
 
-    d += D18991230;
+    long long z = (long long)floor(x);
+    double f = x - (double)z;
 
-    uint64_t dd = (uint64_t)d/(60*60*24);
-    uint64_t y400 = dd / D400;
-    uint64_t y100 = (dd%D400) / D100;
-    uint64_t y4   = ((dd%D400)%D100) / D4;
-    uint64_t y1   = (((dd%D400)%D100)%D4) / D1;
+    long long era = z / 146097;
+    long long doe = z - era * 146097;
+    long long yoe = (doe - doe/1460 + doe/36524 - doe/146096) / 365;
+    long long y = yoe + era * 400;
+    long long doy = doe - (365*yoe + yoe/4 - yoe/100);
+    long long mp = (5*doy + 2) / 153;
 
-    tm t = {};
-    t.tm_year = y400*400 + y100*100 + y4*4 + y1;
-    t.tm_mon  = (5*((((dd%D400)%D100)%D4)%D1) + 2) / 153 + 3;
-    t.tm_mday = ((((dd%D400)%D100)%D4)%D1) - (153*(t.tm_mon-3)+2)/5 + 1;
-    t.tm_wday = -1;//###TODO
+    int d = (int)(doy - (153*mp + 2)/5 + 1);
+    int m = (int)(mp + (mp < 10 ? 3 : -9));
+    y += (m <= 2);
 
-    uint64_t ds = (uint64_t)d%(60*60*24);
-    t.tm_hour = ds / (60*60);
-    t.tm_min  = (ds%(60*60)) / 60;
-    t.tm_sec  = (ds%(60*60)) % 60;
-
-    if(12 < t.tm_mon){
-        t.tm_mon -= 12;
-        ++t.tm_year;
+    long long sec_of_day = (long long)(f * 86400.0 + 0.5);
+    if(sec_of_day >= 86400){
+        sec_of_day = 86399;
     }
 
-    t.tm_year -= 1900;
-    t.tm_mon -= 1;
+    struct tm t = {0};
+    t.tm_year = (int)(y - 1900);
+    t.tm_mon  = m - 1;
+    t.tm_mday = d;
+    t.tm_hour = (int)(sec_of_day / 3600);
+    t.tm_min  = (int)((sec_of_day % 3600) / 60);
+    t.tm_sec  = (int)(sec_of_day % 60);
+    t.tm_wday = -1;
+    t.tm_yday = -1;
+    t.tm_isdst = -1;
 
     return t;
 }
