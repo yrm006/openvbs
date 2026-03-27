@@ -665,6 +665,12 @@ HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFl
             pvargDest->vt = VT_BSTR;
             pvargDest->bstrVal = SysAllocString(buf);
         }else
+        if(pvarSrc->vt == VT_I2){
+            wchar_t buf[1+19 +1];
+            swprintf(buf, 1+19+1, L"%lld", (long long)pvarSrc->iVal);
+            pvargDest->vt = VT_BSTR;
+            pvargDest->bstrVal = SysAllocString(buf);
+        }else
         if(pvarSrc->vt == VT_UI1){
             wchar_t buf[1+19 +1];
             swprintf(buf, 1+19+1, L"%lld", (long long)pvarSrc->bVal);
@@ -809,9 +815,47 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->vt = VT_I4;
             pvargDest->lVal = 0;
         }else
+        if(pvarSrc->vt == VT_BSTR){
+            wchar_t* pend;
+            long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
+            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_I4;
+                pvargDest->lVal = ll;
+            }
+        }else
         if(pvarSrc->vt == VT_I8){
             pvargDest->vt = VT_I4;
             pvargDest->lVal = pvarSrc->llVal;
+        }else
+        {
+wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
+            return E_INVALIDARG;
+        }
+    }else
+    if(vt == VT_I2){
+        if(pvarSrc->vt == VT_EMPTY){
+            pvargDest->vt = VT_I2;
+            pvargDest->lVal = 0;
+        }else
+        if(pvarSrc->vt == VT_BSTR){
+            wchar_t* pend;
+            long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
+            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+
+            if(SUCCEEDED(hr)){
+                pvargDest->vt = VT_I2;
+                pvargDest->iVal = ll;
+            }
+        }else
+        if(pvarSrc->vt == VT_I8){
+            pvargDest->vt = VT_I2;
+            pvargDest->iVal = pvarSrc->llVal;
+        }else
+        if(pvarSrc->vt == VT_I4){
+            pvargDest->vt = VT_I2;
+            pvargDest->iVal = pvarSrc->lVal;
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);

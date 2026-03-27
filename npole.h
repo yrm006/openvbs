@@ -84,6 +84,7 @@
     typedef double      DOUBLE;
     typedef double      DATE;
     typedef long        LONG;
+    typedef int16_t     SHORT;
     typedef int         INT;
     typedef void*       LPVOID;
     typedef const wchar_t* LPCWSTR;
@@ -234,7 +235,7 @@
                     LONGLONG llVal;
                     LONG lVal;
                     BYTE bVal;
-                    // SHORT iVal;
+                    SHORT iVal;
                     // FLOAT fltVal;
                     DOUBLE dblVal;
                     VARIANT_BOOL boolVal;
