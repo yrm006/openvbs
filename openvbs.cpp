@@ -1929,6 +1929,11 @@ public:
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
 
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
+
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
         SYSTEMTIME st;
@@ -1948,6 +1953,11 @@ public:
         int an = pDispParams->cArgs;
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
 
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
@@ -1969,6 +1979,11 @@ public:
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
 
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
+
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
         SYSTEMTIME st;
@@ -1988,6 +2003,11 @@ public:
         int an = pDispParams->cArgs;
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
 
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
@@ -2009,6 +2029,11 @@ public:
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
 
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
+
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
         SYSTEMTIME st;
@@ -2029,6 +2054,11 @@ public:
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
 
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
+
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 
         SYSTEMTIME st;
@@ -2048,6 +2078,11 @@ public:
         int an = pDispParams->cArgs;
         VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
         if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        _variant_t v;
+        if( SUCCEEDED( VariantChangeType(&v, pv1, 0, VT_DATE) ) ){
+            pv1 = &v;
+        }
 
         if(!( pv1->vt==VT_DATE )) return E_INVALIDARG;
 

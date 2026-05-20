@@ -885,6 +885,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->vt = VT_DATE;
             pvargDest->date = pvarSrc->llVal;
         }else
+        if(pvarSrc->vt == VT_R8){
+            pvargDest->vt = VT_DATE;
+            pvargDest->date = pvarSrc->dblVal;
+        }else
         if(pvarSrc->vt == VT_BSTR){
             DATE date;
             hr = VarDateFromStr(pvarSrc->bstrVal, 0, 0, &date);
@@ -1243,7 +1247,7 @@ tm double_tm(double v){
     t.tm_hour = (int)(sec_of_day / 3600);
     t.tm_min  = (int)((sec_of_day % 3600) / 60);
     t.tm_sec  = (int)(sec_of_day % 60);
-    t.tm_wday = -1;
+    t.tm_wday = (z+3) % 7;
     t.tm_yday = -1;
     t.tm_isdst = -1;
 
