@@ -5114,6 +5114,14 @@ private:
                     m_s.push_back( v );
                 }
             }
+        }else
+        if( (&pc-1)->p == map_word(L",")){
+            {
+                _variant_t v;
+                v.wReserved1 = VTX_INST;
+                v.byref = (void*)&s_insts[INST_op_parenL];
+                m_s.push_back( v );
+            }
         }
 
         return true;
