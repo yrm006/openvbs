@@ -2258,8 +2258,51 @@ wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
     HRESULT vbFormatNumber(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        _variant_t vd1{ {{{VT_ERROR,0,0,0,{0}}}} };
+        _variant_t vd2{ {{{VT_I8   ,0,0,0,{-1}}}} };
+        _variant_t vd3{ {{{VT_I8   ,0,0,0,{-2}}}} };
+        _variant_t vd4{ {{{VT_I8   ,0,0,0,{-2}}}} };
+        _variant_t vd5{ {{{VT_I8   ,0,0,0,{-2}}}} };
+
+        int an = pDispParams->cArgs;
+        VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
+        if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+        VARIANT* pv2 = (0 <= an-2) ? &pDispParams->rgvarg[an-2] : &vd2;
+        if(pv2->vt == (VT_BYREF|VT_VARIANT)) pv2 = pv2->pvarVal;
+        VARIANT* pv3 = (0 <= an-3) ? &pDispParams->rgvarg[an-3] : &vd3;
+        if(pv3->vt == (VT_BYREF|VT_VARIANT)) pv3 = pv3->pvarVal;
+        VARIANT* pv4 = (0 <= an-4) ? &pDispParams->rgvarg[an-4] : &vd4;
+        if(pv4->vt == (VT_BYREF|VT_VARIANT)) pv4 = pv4->pvarVal;
+        VARIANT* pv5 = (0 <= an-5) ? &pDispParams->rgvarg[an-5] : &vd5;
+        if(pv5->vt == (VT_BYREF|VT_VARIANT)) pv5 = pv5->pvarVal;
+
+        if(!( pv2->vt==VT_I8                     )) return E_INVALIDARG;
+        if(!( pv3->vt==VT_I8 || pv3->vt==VT_BOOL )) return E_INVALIDARG;
+        if(!( pv4->vt==VT_I8 || pv4->vt==VT_BOOL )) return E_INVALIDARG;
+        if(!( pv5->vt==VT_I8 || pv5->vt==VT_BOOL )) return E_INVALIDARG;
+
+        _variant_t v3, v4, v5;{
+            HRESULT hr;
+            hr = VariantChangeType(&v3, pv3, 0, VT_I8);
+            if(FAILED(hr)) return hr;
+            hr = VariantChangeType(&v4, pv4, 0, VT_I8);
+            if(FAILED(hr)) return hr;
+            hr = VariantChangeType(&v5, pv5, 0, VT_I8);
+            if(FAILED(hr)) return hr;
+            pv3 = &v3;
+            pv4 = &v4;
+            pv5 = &v5;
+        }
+
+        BSTR r = NULL;
+        HRESULT hr = VarFormatNumber(pv1, pv2->llVal, pv3->llVal, pv4->llVal, pv5->llVal, 0, &r);
+        if(SUCCEEDED(hr)){
+            VariantInit(pVarResult);
+            pVarResult->vt = VT_BSTR;
+            pVarResult->bstrVal = r;
+        }
+
+        return hr;
     }
 
     HRESULT vbFormatPercent(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
