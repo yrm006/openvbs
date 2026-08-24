@@ -41,6 +41,7 @@ enum VARENUMX{
     VTX_IVFORRETURN     = 0x24,
     VTX_PCFORNEXT       = 0x25,
     VTX_RETURN          = 0x26,
+    VTX_PCFORLOOP       = 0x27,
 };
 
 enum DIMSCOPE{
@@ -2277,6 +2278,8 @@ public:
         INST_stmt_case,
         INST_stmt_caseelse,
         INST_stmt_do,
+        INST_stmt_loopwhile,
+        INST_stmt_loopuntil,
         INST_stmt_foreach,
         INST_stmt_in,
         INST_stmt_for,
@@ -3685,28 +3688,72 @@ private:
     }
 
     bool stmt_do(VARIANT* p){
-        VARIANT* pve = p+1;
         VARIANT* pvc = p-1;
-
-        if(pve->vt == (VT_BYREF|VT_VARIANT)) pve = pve->pvarVal;
-
-        bool b = (pvc->wReserved1==VTX_PCFORLOOPWHILE) ? (bool)*(_variant_t*)pve : !(bool)*(_variant_t*)pve;
-
-        if( b ){
-            while(p-0 < &m_s.back()) m_s.pop_back();// keep stmt_do, VTX_PCFORLOOPxxxxx
+        if(pvc->wReserved1==VTX_PCFORLOOP){
+            while(p-0 < &m_s.back()) m_s.pop_back();// keep stmt_do, VTX_PCFORLOOP
 
             _variant_t v;
             v.wReserved1 = VTX_GROUND;
             m_s.push_back(v);
         }else{
-            while(p-2 < &m_s.back()) m_s.pop_back();
+            VARIANT* pve = p+1;
 
-            _variant_t v;
-            v.wReserved1 = VTX_SKIPTOLOOP;
-            v.llVal = 1;
-            m_s.push_back(v);
+            if(pve->vt == (VT_BYREF|VT_VARIANT)) pve = pve->pvarVal;
 
-            m_mode = &CProcessor::clock_skiptoloop;
+            bool b = (pvc->wReserved1==VTX_PCFORLOOPWHILE) ? (bool)*(_variant_t*)pve : !(bool)*(_variant_t*)pve;
+
+            if( b ){
+                while(p-0 < &m_s.back()) m_s.pop_back();// keep stmt_do, VTX_PCFORLOOPxxxxx
+
+                _variant_t v;
+                v.wReserved1 = VTX_GROUND;
+                m_s.push_back(v);
+            }else{
+                while(p-2 < &m_s.back()) m_s.pop_back();
+
+                _variant_t v;
+                v.wReserved1 = VTX_SKIPTOLOOP;
+                v.llVal = 1;
+                m_s.push_back(v);
+
+                m_mode = &CProcessor::clock_skiptoloop;
+            }
+        }
+
+        return false;
+    }
+
+    bool stmt_loopwhile(VARIANT* p){
+        VARIANT* pve = p+1;
+
+        if( (bool)*(_variant_t*)pve ){
+            while(! (m_s.back().wReserved1==VTX_GROUND) ) m_s.pop_back();
+
+            VARIANT* pv = &m_s.back();
+            m_pc = (pv-2)->llVal;
+        }else{
+            while(! (m_s.back().wReserved1==VTX_GROUND) ) m_s.pop_back();
+            m_s.pop_back();// VTX_GROUND
+            m_s.pop_back();// VTX_INST
+            m_s.pop_back();// VTX_PCFORLOOP
+        }
+
+        return false;
+    }
+
+    bool stmt_loopuntil(VARIANT* p){
+        VARIANT* pve = p+1;
+
+        if(! (bool)*(_variant_t*)pve ){
+            while(! (m_s.back().wReserved1==VTX_GROUND) ) m_s.pop_back();
+
+            VARIANT* pv = &m_s.back();
+            m_pc = (pv-2)->llVal;
+        }else{
+            while(! (m_s.back().wReserved1==VTX_GROUND) ) m_s.pop_back();
+            m_s.pop_back();// VTX_GROUND
+            m_s.pop_back();// VTX_INST
+            m_s.pop_back();// VTX_PCFORLOOP
         }
 
         return false;
@@ -3880,6 +3927,7 @@ private:
                 if(
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_dowhile    ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_dountil    ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_do         ||
                 false){
                     if(ngnd == 0){
                         while(! (m_s.back().wReserved1==VTX_INST && *((inst_t*)m_s.back().byref)==&CProcessor::stmt_do) ) m_s.pop_back();
@@ -3922,6 +3970,8 @@ private:
                 }else
                 if(
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loop       ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loopwhile  ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loopuntil  ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_next       ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_endselect  ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_endwith    ||
@@ -3935,6 +3985,7 @@ private:
                 if(
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_dowhile    ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_dountil    ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_do         ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_for        ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_foreach    ||
                     *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_selectcase ||
@@ -3942,7 +3993,11 @@ private:
                 false){
                     ++ngnd;
                 }else
-                if( *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loop ){
+                if(
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loop      ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loopwhile ||
+                    *((word_m*)m_pp->m_code[m_pc].p) == &CProcessor::word_loopuntil ||
+                false){
                     if(ngnd == 0){
                         while(! (m_s.back().wReserved1==VTX_INST && *((inst_t*)m_s.back().byref)==&CProcessor::stmt_do) ) m_s.pop_back();
                         m_s.pop_back();//stmt_do
@@ -4261,10 +4316,15 @@ private:
         if(
             *((word_m*)pc.p) == &CProcessor::word_dowhile  ||
             *((word_m*)pc.p) == &CProcessor::word_dountil  ||
+            *((word_m*)pc.p) == &CProcessor::word_do       ||
         false){
             ++pv->llVal;
         }else
-        if(*((word_m*)pc.p) == &CProcessor::word_loop){
+        if(
+            *((word_m*)pc.p) == &CProcessor::word_loop      ||
+            *((word_m*)pc.p) == &CProcessor::word_loopwhile ||
+            *((word_m*)pc.p) == &CProcessor::word_loopuntil ||
+        false){
             if(--pv->llVal == 0){
                 m_s.pop_back();
                 m_mode = &CProcessor::clock_;
@@ -4767,6 +4827,23 @@ private:
         return true;
     }
 
+    bool word_do(word_t& pc){
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_PCFORLOOP;
+            v.llVal = m_pc;
+            m_s.push_back( v );
+        }
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_stmt_do];
+            m_s.push_back( v );
+        }
+
+        return true;
+    }
+
     bool word_dowhile(word_t& pc){
         {
             _variant_t v;
@@ -4804,6 +4881,28 @@ private:
     bool word_loop(word_t& pc){
         m_s.pop_back();     //VTX_GROUND
         m_pc = m_s[m_s.size()-2].llVal;
+
+        return true;
+    }
+
+    bool word_loopwhile(word_t& pc){
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_stmt_loopwhile];
+            m_s.push_back( v );
+        }
+
+        return true;
+    }
+
+    bool word_loopuntil(word_t& pc){
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_stmt_loopuntil];
+            m_s.push_back( v );
+        }
 
         return true;
     }
@@ -4915,7 +5014,7 @@ private:
 
         m_s.pop_back();//VTX_GROUND
         m_s.pop_back();//VTX_INST
-        m_s.pop_back();//VTX_PCFORLOOPWHILE
+        m_s.pop_back();//VTX_PCFORLOOPxxxxx
 
         _variant_t v;
         v.wReserved1 = VTX_SKIPTOLOOP;
