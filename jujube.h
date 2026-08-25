@@ -28,6 +28,7 @@ enum VARENUMX{
     VTX_JSONNEW         = 0x04,
     VTX_CLOSURE         = 0x05,
     VTX_CLASS           = 0x06,
+    VTX_LITERAL         = 0x07,
     VTX_SKIPTOELSE      = 0x10,
     VTX_SKIPTOENDIF     = 0x11,
     VTX_SKIPTOCASE      = 0x12,
@@ -2638,27 +2639,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -2669,21 +2685,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -2693,12 +2701,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_LT ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_LT );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -2717,27 +2727,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -2748,21 +2773,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -2772,12 +2789,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_GT ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_GT );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -2796,27 +2815,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -2827,21 +2861,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -2851,12 +2877,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_LT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_LT || VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_LT || VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -2875,27 +2903,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -2906,21 +2949,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -2930,12 +2965,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_GT || VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_GT || VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_GT || VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -2954,27 +2991,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -2985,21 +3037,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -3009,12 +3053,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) != VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) != VARCMP_EQ ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) != VARCMP_EQ );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -3025,6 +3071,19 @@ private:
     }
 
     bool op_equal(VARIANT* p){
+        //hard number vs hard string
+        //    → stringをnumberへ
+        //
+        //soft number vs hard string
+        //    → numberをstringへ
+        //
+        //hard number vs soft string
+        //    → stringをnumberへ
+        //
+        //soft number vs soft string
+        //    → 型変換しない
+        //    → numeric Variant < string Variant
+        //
         VARIANT* pvL = p-1;
         VARIANT* pvR = p+1;
 
@@ -3033,27 +3092,42 @@ private:
         }
 
         if(
-            ( pvL->vt == VT_I1 || pvR->vt == VT_I1 ) ||
-            ( pvL->vt == VT_I2 || pvR->vt == VT_I2 ) ||
-            ( pvL->vt == VT_I4 || pvR->vt == VT_I4 ) ||
-            ( pvL->vt == VT_I8 || pvR->vt == VT_I8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_R8 || pvL->vt == VT_R4) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_R8 || pvR->vt == VT_R4) ) ||
         0){
             _variant_t vL, vR;
             if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
             0){
                 m_mode = &CProcessor::clock_throw_;
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         if(
-            ( pvL->vt == VT_UI1 || pvR->vt == VT_UI1 ) ||
-            ( pvL->vt == VT_UI2 || pvR->vt == VT_UI2 ) ||
-            ( pvL->vt == VT_UI4 || pvR->vt == VT_UI4 ) ||
-            ( pvL->vt == VT_UI8 || pvR->vt == VT_UI8 ) ||
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_I8 || pvL->vt == VT_I4 || pvL->vt == VT_I2 || pvL->vt == VT_I1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_I8 || pvR->vt == VT_I4 || pvR->vt == VT_I2 || pvR->vt == VT_I1) ) ||
+        0){
+            _variant_t vL, vR;
+            if(
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_I8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_I8))) &&
+               (FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8))  ||
+                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8))) &&
+            1){
+                m_mode = &CProcessor::clock_throw_;
+                --m_pc;
+                return false;
+            }
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
+        }else
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_UI8 || pvL->vt == VT_UI4 || pvL->vt == VT_UI2 || pvL->vt == VT_UI1) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_UI8 || pvR->vt == VT_UI4 || pvR->vt == VT_UI2 || pvR->vt == VT_UI1) ) ||
         0){
             _variant_t vL, vR;
             if(
@@ -3064,21 +3138,13 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
-        if(pvL->vt == VT_R8 || pvR->vt == VT_R8){
-            _variant_t vL, vR;
-            if(
-                FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_R8)) ||
-                FAILED(m_err->m_hr = VariantChangeType(&vR, pvR, 0, VT_R8)) ||
-            0){
-                m_mode = &CProcessor::clock_throw_;
-                --m_pc;
-                return false;
-            }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
-        }else
-        if(pvL->vt == VT_BSTR || pvR->vt == VT_BSTR){
+        if(
+            ( (pvL->wReserved1 == VTX_LITERAL) && (pvL->vt == VT_BSTR) ) ||
+            ( (pvR->wReserved1 == VTX_LITERAL) && (pvR->vt == VT_BSTR) ) ||
+        0){
             _variant_t vL, vR;
             if(
                 FAILED(m_err->m_hr = VariantChangeType(&vL, pvL, 0, VT_BSTR)) ||
@@ -3088,12 +3154,14 @@ private:
                 --m_pc;
                 return false;
             }
-            v.boolVal = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = (VarCmp(&vL, &vR, 0, 0) == VARCMP_EQ);
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }else
         {
             if(pvL->vt == (VT_BYREF|VT_VARIANT)) pvL = pvL->pvarVal;
             if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
-            v.boolVal = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ ) ? VARIANT_TRUE : VARIANT_FALSE;
+            bool b = ( VarCmp(pvL, pvR, 0, 0) == VARCMP_EQ );
+            v.boolVal = b ? VARIANT_TRUE : VARIANT_FALSE;
         }
 
         while(p-2 < &m_s.back()) m_s.pop_back();
@@ -5094,7 +5162,7 @@ private:
         while(!( i->wReserved1 == VTX_GROUND || i->wReserved1 == VTX_INST )) ++i;
 
         bool prR = ( *((word_m*)m_pp->m_code[m_pc-2].p) == &CProcessor::word_parenR );
-        bool ist = m_s.rbegin()->wReserved1;
+        bool ist = m_s.rbegin()->wReserved1 && (m_s.rbegin()->wReserved1 != VTX_LITERAL);
 
         if(i->wReserved1 == VTX_INST && *((inst_t*)i->byref) == &CProcessor::op_invoke && ni<2 && (prR || ist)){
             i->byref = (void*)&s_insts[INST_op_invoke_put];//&CProcessor::op_invoke_put;
@@ -5143,7 +5211,7 @@ private:
 
     bool word_plus(word_t& pc){
         int inst;
-        if(m_s.back().wReserved1 == VTX_NONE){
+        if(m_s.back().wReserved1 == VTX_NONE || m_s.back().wReserved1 == VTX_LITERAL){
             do_left_invoke();
 
             inst = INST_op_plus;
@@ -5166,7 +5234,7 @@ private:
     bool word_minus(word_t& pc){
         int inst;
         if(
-            m_s.back().wReserved1 == VTX_NONE                       &&
+            (m_s.back().wReserved1 == VTX_NONE || m_s.back().wReserved1 == VTX_LITERAL) &&
             *((word_m*)(&pc-1)->p) != &CProcessor::word_comma &&
             *((word_m*)(&pc-1)->p) != &CProcessor::word_to    &&
             *((word_m*)(&pc-1)->p) != &CProcessor::word_step  &&
@@ -5727,6 +5795,7 @@ private:
     bool word_literal(word_t& pc){
         {
             m_s.push_back( pc.v );
+            m_s.back().wReserved1 = VTX_LITERAL;
         }
 
         return true;

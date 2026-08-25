@@ -380,6 +380,7 @@
     HRESULT SafeArrayUnaccessData(SAFEARRAY *psa);
     INT SystemTimeToVariantTime(LPSYSTEMTIME lpSystemTime, DOUBLE *pvtime);
     INT VariantTimeToSystemTime(DOUBLE vtime, LPSYSTEMTIME lpSystemTime);
+    HRESULT VarFormatNumber(LPVARIANT pvarIn, int iNumDig, int iIncLead, int iUseParens, int iGroup, ULONG dwFlags, BSTR *pbstrOut);
 
     // others
     double tm_double(tm t);
