@@ -214,34 +214,53 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
 HRESULT VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, ULONG dwFlags){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
-    
-    _variant_t v;
-    if(pvarLeft->vt == VT_BSTR && pvarRight->vt != VT_BSTR){
-        VariantChangeType(&v, pvarRight, 0, VT_BSTR);
-        pvarRight = &v;
-    }else
-    if(pvarRight->vt == VT_BSTR && pvarLeft->vt != VT_BSTR){
-        VariantChangeType(&v, pvarLeft, 0, VT_BSTR);
-        pvarLeft = &v;
-    }else
-    if(pvarLeft->vt == VT_R8 && pvarRight->vt != VT_R8){
-        VariantChangeType(&v, pvarRight, 0, VT_R8);
-        pvarRight = &v;
-    }else
-    if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
-        VariantChangeType(&v, pvarLeft, 0, VT_R8);
-        pvarLeft = &v;
-    }else
-    if(pvarLeft->vt == VT_I8 && pvarRight->vt != VT_I8){
-        VariantChangeType(&v, pvarRight, 0, VT_I8);
-        pvarRight = &v;
-    }else
-    if(pvarRight->vt == VT_I8 && pvarLeft->vt != VT_I8){
-        VariantChangeType(&v, pvarLeft, 0, VT_I8);
-        pvarLeft = &v;
-    }else
-    {}
 
+    if(pvarLeft->vt != pvarRight->vt){
+        if(
+           (pvarLeft->vt == VT_R4  || pvarLeft->vt == VT_R8  ||
+            pvarLeft->vt == VT_I1  || pvarLeft->vt == VT_I2  || pvarLeft->vt == VT_I4  || pvarLeft->vt == VT_I8  ||
+            pvarLeft->vt == VT_UI1 || pvarLeft->vt == VT_UI2 || pvarLeft->vt == VT_UI4 || pvarLeft->vt == VT_UI8 ||
+           0) && pvarRight->vt == VT_BSTR
+        ){
+            return VARCMP_LT;
+        }else
+        if(
+            pvarLeft->vt == VT_BSTR &&
+           (pvarRight->vt == VT_R4  || pvarRight->vt == VT_R8  ||
+            pvarRight->vt == VT_I1  || pvarRight->vt == VT_I2  || pvarRight->vt == VT_I4  || pvarRight->vt == VT_I8  ||
+            pvarRight->vt == VT_UI1 || pvarRight->vt == VT_UI2 || pvarRight->vt == VT_UI4 || pvarRight->vt == VT_UI8 ||
+           0)
+        ){
+            return VARCMP_GT;
+        }else
+        if(
+            (pvarLeft->vt == VT_R4 || pvarLeft->vt == VT_R8) &&
+            (pvarRight->vt == VT_I1  || pvarRight->vt == VT_I2  || pvarRight->vt == VT_I4  || pvarRight->vt == VT_I8  ||
+             pvarRight->vt == VT_UI1 || pvarRight->vt == VT_UI2 || pvarRight->vt == VT_UI4 || pvarRight->vt == VT_UI8 )
+        ){
+            _variant_t vL, vR;
+            VariantChangeType(&vL, pvarLeft , 0, VT_R8);
+            VariantChangeType(&vR, pvarRight, 0, VT_R8);
+            return  (vL.dblVal < vR.dblVal) ? VARCMP_LT
+                  : (vL.dblVal > vR.dblVal) ? VARCMP_GT
+                  : VARCMP_EQ;
+        }else
+        if(
+            (pvarLeft->vt == VT_I1  || pvarLeft->vt == VT_I2  || pvarLeft->vt == VT_I4  || pvarLeft->vt == VT_I8  ||
+             pvarLeft->vt == VT_UI1 || pvarLeft->vt == VT_UI2 || pvarLeft->vt == VT_UI4 || pvarLeft->vt == VT_UI8 ) &&
+            (pvarRight->vt == VT_R4 || pvarRight->vt == VT_R8)
+        ){
+            _variant_t vL, vR;
+            VariantChangeType(&vL, pvarLeft , 0, VT_R8);
+            VariantChangeType(&vR, pvarRight, 0, VT_R8);
+            return  (vL.dblVal < vR.dblVal) ? VARCMP_LT
+                  : (vL.dblVal > vR.dblVal) ? VARCMP_GT
+                  : VARCMP_EQ;
+        }else
+        {
+            return (pvarLeft->vt < pvarRight->vt) ? VARCMP_LT : VARCMP_GT;
+        }
+    }else
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_I8){
         return  (pvarLeft->llVal < pvarRight->llVal) ? VARCMP_LT
               : (pvarLeft->llVal > pvarRight->llVal) ? VARCMP_GT
@@ -312,6 +331,10 @@ HRESULT VarInt(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->vt = VT_I8;
         pvarResult->llVal = pvarIn->llVal;
     }else
+    if(pvarIn->vt == VT_BOOL){
+        pvarResult->vt = VT_BOOL;
+        pvarResult->llVal = pvarIn->boolVal;
+    }else
     {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
         return E_INVALIDARG;
@@ -346,6 +369,10 @@ HRESULT VarAbs(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->vt = VT_I8;
         pvarResult->llVal = (pvarIn->llVal < 0) ? -pvarIn->llVal : pvarIn->llVal;
     }else
+    if(pvarIn->vt == VT_BOOL){
+        pvarResult->vt = VT_I8;
+        pvarResult->llVal = (pvarIn->boolVal < 0) ? -pvarIn->boolVal : pvarIn->boolVal;
+    }else
     {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
         return E_INVALIDARG;
@@ -358,6 +385,19 @@ HRESULT VarPow(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
     
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
+    
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_I8){
         pvarResult->vt = VT_I8;
         pvarResult->llVal = pow(pvarLeft->llVal, pvarRight->llVal);
@@ -365,18 +405,20 @@ HRESULT VarPow(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == VT_R8 && pvarRight->vt == VT_R8){
         pvarResult->vt = VT_R8;
         pvarResult->dblVal = pow(pvarLeft->dblVal, pvarRight->dblVal);
+        if(!isfinite(pvarResult->dblVal)) return CTL_E_OVERFLOW;
     }else
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_R8){
         pvarResult->vt = VT_R8;
         pvarResult->dblVal = pow(pvarLeft->llVal, pvarRight->dblVal);
+        if(!isfinite(pvarResult->dblVal)) return CTL_E_OVERFLOW;
     }else
     if(pvarLeft->vt == VT_R8 && pvarRight->vt == VT_I8){
         pvarResult->vt = VT_R8;
         pvarResult->dblVal = pow(pvarLeft->dblVal, pvarRight->llVal);
+        if(!isfinite(pvarResult->dblVal)) return CTL_E_OVERFLOW;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -385,6 +427,19 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
 HRESULT VarMul(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
+    
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
     
     _variant_t vL;
     if(pvarLeft->vt == VT_BOOL){
@@ -414,8 +469,7 @@ HRESULT VarMul(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->dblVal = pvarLeft->dblVal * pvarRight->dblVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -424,6 +478,19 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
 HRESULT VarMod(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
+    
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_I8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_I8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
 
     if(pvarLeft->vt == VT_I8 && pvarRight->vt == VT_I8){
         if(pvarRight->llVal == 0) return DISP_E_DIVBYZERO;
@@ -432,8 +499,7 @@ HRESULT VarMod(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->llVal = pvarLeft->llVal % pvarRight->llVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -442,6 +508,19 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
 HRESULT VarDiv(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
+    
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
     
     _variant_t vL;
     if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
@@ -467,8 +546,7 @@ HRESULT VarDiv(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->dblVal = pvarLeft->dblVal / pvarRight->dblVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -477,6 +555,23 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
 HRESULT VarAdd(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
+    
+    if(pvarLeft->vt == VT_BSTR && pvarRight->vt == VT_BSTR){
+        return VarCat(pvarLeft, pvarRight, pvarResult);
+    }
+
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
     
     _variant_t vL;
     if(pvarRight->vt == VT_I8 && pvarLeft->vt != VT_I8){
@@ -509,8 +604,7 @@ HRESULT VarAdd(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         return VarCat(pvarLeft, pvarRight, pvarResult);
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -520,6 +614,19 @@ HRESULT VarSub(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
     if(pvarLeft->vt == (VT_BYREF|VT_VARIANT)) pvarLeft = pvarLeft->pvarVal;
     if(pvarRight->vt == (VT_BYREF|VT_VARIANT)) pvarRight = pvarRight->pvarVal;
     
+    _variant_t vsL;
+    if(pvarLeft->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsL, pvarLeft, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarLeft = &vsL;
+    }
+    _variant_t vsR;
+    if(pvarRight->vt == VT_BSTR){
+        HRESULT hr = VariantChangeType(&vsR, pvarRight, 0, VT_R8);
+        if(FAILED(hr)) return E_INVALIDARG;
+        pvarRight = &vsR;
+    }
+
     _variant_t vL;
     if(pvarRight->vt == VT_R8 && pvarLeft->vt != VT_R8){
         VariantChangeType(&vL, pvarLeft, 0, VT_R8);
@@ -540,8 +647,7 @@ HRESULT VarSub(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->dblVal = pvarLeft->dblVal - pvarRight->dblVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        return E_INVALIDARG;
     }
 
     return S_OK;
@@ -760,13 +866,17 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->dblVal = pvarSrc->boolVal;
         }else
         if(pvarSrc->vt == VT_BSTR){
-            wchar_t* pend;
-            double dbl = wcstod(pvarSrc->bstrVal, &pend);
-            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+            if(SysStringLen(pvarSrc->bstrVal)){
+                wchar_t* pend;
+                double dbl = wcstod(pvarSrc->bstrVal, &pend);
+                if(pend < pvarSrc->bstrVal+SysStringLen(pvarSrc->bstrVal)) hr = E_INVALIDARG;
 
-            if(SUCCEEDED(hr)){
-                pvargDest->vt = VT_R8;
-                pvargDest->dblVal = dbl;
+                if(SUCCEEDED(hr)){
+                    pvargDest->vt = VT_R8;
+                    pvargDest->dblVal = dbl;
+                }
+            }else{
+                hr = E_INVALIDARG;
             }
         }else
         {
@@ -780,13 +890,17 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->llVal = 0;
         }else
         if(pvarSrc->vt == VT_BSTR){
-            wchar_t* pend;
-            long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
-            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+            if(SysStringLen(pvarSrc->bstrVal)){
+                wchar_t* pend;
+                long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
+                if(pend < pvarSrc->bstrVal+SysStringLen(pvarSrc->bstrVal)) hr = E_INVALIDARG;
 
-            if(SUCCEEDED(hr)){
-                pvargDest->vt = VT_I8;
-                pvargDest->llVal = ll;
+                if(SUCCEEDED(hr)){
+                    pvargDest->vt = VT_I8;
+                    pvargDest->llVal = ll;
+                }
+            }else{
+                hr = E_INVALIDARG;
             }
         }else
         if(pvarSrc->vt == VT_I4){
@@ -816,13 +930,17 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->lVal = 0;
         }else
         if(pvarSrc->vt == VT_BSTR){
-            wchar_t* pend;
-            long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
-            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+            if(SysStringLen(pvarSrc->bstrVal)){
+                wchar_t* pend;
+                long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
+                if(pend < pvarSrc->bstrVal+SysStringLen(pvarSrc->bstrVal)) hr = E_INVALIDARG;
 
-            if(SUCCEEDED(hr)){
-                pvargDest->vt = VT_I4;
-                pvargDest->lVal = ll;
+                if(SUCCEEDED(hr)){
+                    pvargDest->vt = VT_I4;
+                    pvargDest->lVal = ll;
+                }
+            }else{
+                hr = E_INVALIDARG;
             }
         }else
         if(pvarSrc->vt == VT_I8){
@@ -840,13 +958,17 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->lVal = 0;
         }else
         if(pvarSrc->vt == VT_BSTR){
-            wchar_t* pend;
-            long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
-            if(pvarSrc->bstrVal == pend) hr = E_INVALIDARG;
+            if(SysStringLen(pvarSrc->bstrVal)){
+                wchar_t* pend;
+                long long ll = wcstoll(pvarSrc->bstrVal, &pend, 10);
+                if(pend < pvarSrc->bstrVal+SysStringLen(pvarSrc->bstrVal)) hr = E_INVALIDARG;
 
-            if(SUCCEEDED(hr)){
-                pvargDest->vt = VT_I2;
-                pvargDest->iVal = ll;
+                if(SUCCEEDED(hr)){
+                    pvargDest->vt = VT_I2;
+                    pvargDest->iVal = ll;
+                }
+            }else{
+                hr = E_INVALIDARG;
             }
         }else
         if(pvarSrc->vt == VT_I8){
@@ -856,6 +978,10 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
         if(pvarSrc->vt == VT_I4){
             pvargDest->vt = VT_I2;
             pvargDest->iVal = pvarSrc->lVal;
+        }else
+        if(pvarSrc->vt == VT_BOOL){
+            pvargDest->vt = VT_I2;
+            pvargDest->iVal = pvarSrc->boolVal;
         }else
         {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
@@ -1193,6 +1319,11 @@ INT VariantTimeToSystemTime(DOUBLE vtime, LPSYSTEMTIME lpSystemTime){
     lpSystemTime->wMilliseconds = 0;
 
     return TRUE;
+}
+
+HRESULT VarFormatNumber(LPVARIANT pvarIn, int iNumDig, int iIncLead, int iUseParens, int iGroup, ULONG dwFlags, BSTR *pbstrOut){
+wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
+    return E_NOTIMPL;
 }
 
 // others
