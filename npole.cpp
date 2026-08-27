@@ -30,9 +30,11 @@ HMODULE LoadLibraryW(LPOLESTR lpszLibName){
 
         char path[256];
         if(name[i]){
-            snprintf(path, 256, "%s%s",  getenv("REGISTRY"), name);
+            int n = snprintf(path, 256, "%s%s",  getenv("REGISTRY"), name);
+            if(256 <= n) return nullptr;
         }else{
-            snprintf(path, 256, "%s%s.so",  getenv("REGISTRY"), name);
+            int n = snprintf(path, 256, "%s%s.so",  getenv("REGISTRY"), name);
+            if(256 <= n) return nullptr;
         }
 
         return dlopen(path, RTLD_LAZY);
@@ -76,7 +78,8 @@ HRESULT CLSIDFromProgID(LPCOLESTR lpszProgID, LPCLSID lpclsid){
     for(size_t i=0; name[i]; ++i) name[i] = toupper(name[i]);
 
     char path[256];
-    snprintf(path, 256, "%s%s.clsid",  getenv("REGISTRY"), name);
+    int n = snprintf(path, 256, "%s%s.clsid",  getenv("REGISTRY"), name);
+    if(256 <= n) return E_FAIL;
 
     FILE* pf = fopen(path, "r");
     if(pf){
