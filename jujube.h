@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <wctype.h>
 #include <vector>
 #include <string>
 #include <map>

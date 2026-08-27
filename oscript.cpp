@@ -3,6 +3,7 @@
 #include <random>
 #include <locale.h>
 #include <stdlib.h>
+#include <math.h>
 
 #ifdef _WIN32
     #define usleep(m)    Sleep(m/1000)
