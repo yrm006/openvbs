@@ -10,6 +10,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <limits.h>
+#include <locale.h>
 
 #define D18991230 693899.0
 
@@ -1334,10 +1336,361 @@ INT VariantTimeToSystemTime(DOUBLE vtime, LPSYSTEMTIME lpSystemTime){
     return TRUE;
 }
 
-HRESULT VarFormatNumber(LPVARIANT pvarIn, int iNumDig, int iIncLead, int iUseParens, int iGroup, ULONG dwFlags, BSTR *pbstrOut){
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-    return E_NOTIMPL;
+//----------------------------------------------------------------
+//VarFormatNumber
+static size_t locale_wstring(wchar_t* out, size_t outc, const char* text, const wchar_t* fallback){
+    size_t length = (text && *text) ? mbstowcs(nullptr, text, 0) : (size_t)-1;
+    if(length == (size_t)-1 || outc <= length){
+        text = nullptr;
+        length = fallback ? wcslen(fallback) : 0;
+    }
+
+    if(outc){
+        if(text) mbstowcs(out, text, length+1);
+        else if(fallback) wcscpy(out, fallback);
+        else out[0] = L'\0';
+    }
+    return length;
 }
+
+enum { FORMAT_NUMBER_LIMIT = 512 };
+
+static bool decimal_to_string(const DECIMAL& decimal, wchar_t* result, size_t resultc){
+    BYTE scale = decimal.DUMMYUNIONNAME.DUMMYSTRUCTNAME.scale;
+    BYTE sign = decimal.DUMMYUNIONNAME.DUMMYSTRUCTNAME.sign;
+    if(scale > 28 || (sign != 0 && sign != 0x80)) return false;
+
+    ULONG words[3] = {
+        decimal.DUMMYUNIONNAME2.DUMMYSTRUCTNAME2.Lo32,
+        decimal.DUMMYUNIONNAME2.DUMMYSTRUCTNAME2.Mid32,
+        decimal.Hi32
+    };
+    wchar_t reverse[30];
+    size_t length = 0;
+    do{
+        ULONGLONG remainder = 0;
+        for(int i=2; 0<=i; --i){
+            ULONGLONG value = (remainder << 32) | words[i];
+            words[i] = (ULONG)(value / 10);
+            remainder = value % 10;
+        }
+        reverse[length++] = (wchar_t)(L'0' + remainder);
+    }while(words[0] || words[1] || words[2]);
+
+    size_t zeroes = scale < length ? 0 : scale-length+1;
+    size_t outputLength = (sign == 0x80) + length + zeroes + (scale != 0);
+    if(resultc <= outputLength) return false;
+
+    wchar_t* out = result;
+    if(sign == 0x80) *out++ = L'-';
+    while(zeroes--) *out++ = L'0';
+    while(length){
+        if(scale && length == scale) *out++ = L'.';
+        *out++ = reverse[--length];
+    }
+    *out = L'\0';
+    return true;
+}
+
+static void normalize_decimal_point(wchar_t* number){
+    lconv* locale = localeconv();
+    wchar_t decimal[16];
+    locale_wstring(decimal, sizeof(decimal)/sizeof(decimal[0]), locale ? locale->decimal_point : nullptr, L".");
+    if(wcscmp(decimal, L".")){
+        wchar_t* point = wcsstr(number, decimal);
+        if(point){
+            size_t length = wcslen(decimal);
+            if(1 < length) memmove(point+1, point+length, sizeof(wchar_t)*(wcslen(point+length)+1));
+            *point = L'.';
+        }
+    }
+}
+
+static HRESULT variant_number_string(LPVARIANT pvarIn, wchar_t* result, size_t resultc){
+    if(!pvarIn || !result || !resultc) return E_INVALIDARG;
+    if(pvarIn->vt == (VT_BYREF|VT_VARIANT)){
+        if(!pvarIn->pvarVal) return E_INVALIDARG;
+        pvarIn = pvarIn->pvarVal;
+    }
+
+    if(pvarIn->vt == VT_EMPTY){
+        wcscpy(result, L"0");
+    }else
+    if(pvarIn->vt == VT_I1){
+        swprintf(result, resultc, L"%d", (int)(int8_t)pvarIn->bVal);
+    }else
+    if(pvarIn->vt == VT_UI1){
+        swprintf(result, resultc, L"%u", (unsigned int)pvarIn->bVal);
+    }else
+    if(pvarIn->vt == VT_I2){
+        swprintf(result, resultc, L"%d", (int)pvarIn->iVal);
+    }else
+    if(pvarIn->vt == VT_UI2){
+        swprintf(result, resultc, L"%u", (unsigned int)pvarIn->uiVal);
+    }else
+    if(pvarIn->vt == VT_I4){
+        swprintf(result, resultc, L"%d", (int)(int32_t)pvarIn->lVal);
+    }else
+    if(pvarIn->vt == VT_UI4){
+        ULONG value;
+        memcpy(&value, &pvarIn->llVal, sizeof(value));
+        swprintf(result, resultc, L"%llu", (unsigned long long)value);
+    }else
+    if(pvarIn->vt == VT_I8){
+        swprintf(result, resultc, L"%lld", (long long)pvarIn->llVal);
+    }else
+    if(pvarIn->vt == VT_UI8){
+        swprintf(result, resultc, L"%llu", (unsigned long long)pvarIn->ullVal);
+    }else
+    if(pvarIn->vt == VT_R4){
+        float value;
+        memcpy(&value, &pvarIn->llVal, sizeof(value));
+        if(!isfinite(value)) return DISP_E_TYPEMISMATCH;
+        swprintf(result, resultc, L"%.7G", (double)value);
+        normalize_decimal_point(result);
+    }else
+    if(pvarIn->vt == VT_R8){
+        if(!isfinite(pvarIn->dblVal)) return DISP_E_TYPEMISMATCH;
+        swprintf(result, resultc, L"%.15G", pvarIn->dblVal);
+        normalize_decimal_point(result);
+    }else
+    if(pvarIn->vt == VT_CY){
+        LONGLONG value = pvarIn->llVal;
+        ULONGLONG magnitude = value < 0 ? 0-(ULONGLONG)value : (ULONGLONG)value;
+        swprintf(result, resultc, L"%ls%llu.%04llu", value < 0 ? L"-" : L"",
+            (unsigned long long)(magnitude/10000), (unsigned long long)(magnitude%10000));
+    }else
+    if(pvarIn->vt == VT_BOOL){
+        wcscpy(result, pvarIn->boolVal ? L"-1" : L"0");
+    }else
+    if(pvarIn->vt == VT_DECIMAL){
+        if(!decimal_to_string(pvarIn->decVal, result, resultc)) return DISP_E_TYPEMISMATCH;
+    }else
+    if(pvarIn->vt == VT_BSTR){
+        if(!pvarIn->bstrVal) return DISP_E_TYPEMISMATCH;
+        size_t length = SysStringLen(pvarIn->bstrVal);
+        if(resultc <= length) return DISP_E_TYPEMISMATCH;
+        memcpy(result, pvarIn->bstrVal, sizeof(wchar_t)*length);
+        result[length] = L'\0';
+    }else
+    if(pvarIn->vt == VT_DISPATCH){
+        VARIANT converted;
+        VariantInit(&converted);
+        HRESULT hr = VariantChangeType(&converted, pvarIn, 0, VT_BSTR);
+        if(FAILED(hr)) return hr;
+        size_t length = converted.bstrVal ? SysStringLen(converted.bstrVal) : resultc;
+        if(length < resultc){
+            memcpy(result, converted.bstrVal, sizeof(wchar_t)*length);
+            result[length] = L'\0';
+        }
+        VariantClear(&converted);
+        if(resultc <= length) return DISP_E_TYPEMISMATCH;
+    }else
+    {
+        return DISP_E_TYPEMISMATCH;
+    }
+
+    return S_OK;
+}
+
+static bool normalize_number(wchar_t* source, int digitsAfterDecimal,
+    wchar_t* whole, wchar_t* fractional, bool* negative)
+{
+    size_t length = wcslen(source);
+    if(FORMAT_NUMBER_LIMIT < length) return false;
+
+    wchar_t* digits = source;
+    size_t pos = 0;
+    size_t digitCount = 0;
+    size_t decimalPosition = (size_t)-1;
+    *negative = false;
+    if(source[pos] == L'-'){
+        *negative = true;
+        ++pos;
+    }
+    while(pos < length){
+        wchar_t ch = source[pos];
+        if(L'0' <= ch && ch <= L'9'){
+            digits[digitCount++] = ch;
+            ++pos;
+        }else if(ch == L'.' && decimalPosition == (size_t)-1){
+            decimalPosition = digitCount;
+            ++pos;
+        }else{
+            break;
+        }
+    }
+    if(!digitCount){
+        return false;
+    }
+    if(decimalPosition == (size_t)-1) decimalPosition = digitCount;
+
+    long long exponent = 0;
+    if(pos < length && (source[pos] == L'e' || source[pos] == L'E')){
+        ++pos;
+        bool exponentNegative = false;
+        if(pos < length && (source[pos] == L'+' || source[pos] == L'-')){
+            exponentNegative = source[pos] == L'-';
+            ++pos;
+        }
+        if(pos == length || source[pos] < L'0' || L'9' < source[pos]){
+            return false;
+        }
+        while(pos < length && L'0' <= source[pos] && source[pos] <= L'9'){
+            if(exponent < 10000) exponent = exponent*10 + source[pos]-L'0';
+            ++pos;
+        }
+        if(exponentNegative) exponent = -exponent;
+    }
+    if(pos != length){
+        return false;
+    }
+
+    long long decimalIndex = (long long)decimalPosition + exponent;
+    if(decimalIndex < -FORMAT_NUMBER_LIMIT || FORMAT_NUMBER_LIMIT < decimalIndex) return false;
+
+    if(decimalIndex <= 0){
+        whole[0] = L'0';
+        whole[1] = L'\0';
+    }else{
+        size_t copyLength = (size_t)decimalIndex < digitCount ? (size_t)decimalIndex : digitCount;
+        memcpy(whole, digits, sizeof(wchar_t)*copyLength);
+        while(copyLength < (size_t)decimalIndex) whole[copyLength++] = L'0';
+        whole[copyLength] = L'\0';
+    }
+
+    for(int i=0; i<digitsAfterDecimal; ++i){
+        long long digitIndex = decimalIndex+i;
+        fractional[i] = 0 <= digitIndex && digitIndex < (long long)digitCount ? digits[digitIndex] : L'0';
+    }
+    fractional[digitsAfterDecimal] = L'\0';
+
+    size_t leadingZeroes = 0;
+    while(whole[leadingZeroes] == L'0' && whole[leadingZeroes+1]) ++leadingZeroes;
+    if(leadingZeroes) memmove(whole, whole+leadingZeroes, sizeof(wchar_t)*(wcslen(whole+leadingZeroes)+1));
+
+    long long roundIndex = decimalIndex+digitsAfterDecimal;
+    bool roundUp = 0 <= roundIndex && roundIndex < (long long)digitCount && digits[roundIndex] >= L'5';
+    if(roundUp){
+        size_t index = (size_t)digitsAfterDecimal;
+        while(index && fractional[index-1] == L'9') fractional[--index] = L'0';
+        if(index){
+            ++fractional[index-1];
+        }else{
+            index = wcslen(whole);
+            while(index && whole[index-1] == L'9') whole[--index] = L'0';
+            if(index) ++whole[index-1];
+            else{
+                memmove(whole+1, whole, sizeof(wchar_t)*(wcslen(whole)+1));
+                whole[0] = L'1';
+            }
+        }
+    }
+
+    return true;
+}
+
+static size_t group_number(const wchar_t* digits, const unsigned char* grouping,
+    size_t groupingCount, BYTE* breaks)
+{
+    size_t length = wcslen(digits);
+    memset(breaks, 0, length+1);
+    if(!length || !groupingCount || !grouping[0] || grouping[0] == CHAR_MAX) return 0;
+
+    size_t end = length;
+    size_t groupIndex = 0;
+    size_t breakCount = 0;
+    unsigned int previous = 0;
+    while(end){
+        unsigned int groupSize = grouping[groupIndex];
+        if(groupSize == CHAR_MAX || (!groupSize && !previous)) break;
+        if(!groupSize) groupSize = previous;
+        else previous = groupSize;
+
+        size_t start = end > groupSize ? end-groupSize : 0;
+        if(start){
+            breaks[start] = 1;
+            ++breakCount;
+        }
+        end = start;
+        if(groupIndex+1 < groupingCount && grouping[groupIndex]) ++groupIndex;
+    }
+
+    return breakCount;
+}
+
+HRESULT VarFormatNumber(LPVARIANT pvarIn, int iNumDig, int iIncLead, int iUseParens, int iGroup, ULONG dwFlags, BSTR *pbstrOut){
+    if(!pvarIn || !pbstrOut || 9 < iNumDig) return E_INVALIDARG;
+    *pbstrOut = nullptr;
+    (void)dwFlags;
+
+    int digitsAfterDecimal = iNumDig < 0 ? 2 : iNumDig;
+    bool includeLeadingDigit = iIncLead == -2 ? true : iIncLead == -1;
+    bool useParens = iUseParens == -2 ? false : iUseParens == -1;
+
+    lconv* locale = localeconv();
+    wchar_t decimalSeparator[16];
+    wchar_t thousandsSeparator[16];
+    locale_wstring(decimalSeparator, sizeof(decimalSeparator)/sizeof(decimalSeparator[0]),
+        locale ? locale->decimal_point : nullptr, L".");
+    locale_wstring(thousandsSeparator, sizeof(thousandsSeparator)/sizeof(thousandsSeparator[0]),
+        locale ? locale->thousands_sep : nullptr, L"");
+
+    unsigned char grouping[16];
+    size_t groupingCount = 0;
+    if(iGroup == -1){
+        grouping[groupingCount++] = 3;
+        grouping[groupingCount++] = 0;
+    }else if(iGroup == -2 && locale && locale->grouping){
+        while(groupingCount < sizeof(grouping)){
+            unsigned char item = (unsigned char)locale->grouping[groupingCount];
+            grouping[groupingCount++] = item;
+            if(item == 0 || item == CHAR_MAX) break;
+        }
+    }
+
+    wchar_t source[FORMAT_NUMBER_LIMIT+1];
+    HRESULT hr = variant_number_string(pvarIn, source, sizeof(source)/sizeof(source[0]));
+    if(FAILED(hr)) return hr;
+
+    wchar_t whole[FORMAT_NUMBER_LIMIT+2];
+    wchar_t fractional[10];
+    bool negative;
+    if(!normalize_number(source, digitsAfterDecimal, whole, fractional, &negative)) return DISP_E_TYPEMISMATCH;
+
+    if(!includeLeadingDigit && whole[0] == L'0' && !whole[1]) whole[0] = L'\0';
+    BYTE breaks[FORMAT_NUMBER_LIMIT+2];
+    size_t breakCount = *thousandsSeparator ? group_number(whole, grouping, groupingCount, breaks) : 0;
+    size_t wholeLength = wcslen(whole);
+    size_t separatorLength = wcslen(thousandsSeparator);
+    size_t groupedLength = wholeLength + breakCount*separatorLength;
+    size_t decimalLength = digitsAfterDecimal ? wcslen(decimalSeparator) : 0;
+    size_t resultLength = groupedLength + decimalLength + digitsAfterDecimal + (negative ? (useParens ? 2 : 1) : 0);
+    BSTR result = SysAllocStringLen(nullptr, (UINT)resultLength);
+    if(!result) return E_FAIL;
+
+    wchar_t* out = result;
+    if(negative) *out++ = useParens ? L'(' : L'-';
+    for(size_t i=0; i<wholeLength; ++i){
+        if(breakCount && breaks[i]){
+            memcpy(out, thousandsSeparator, sizeof(wchar_t)*separatorLength);
+            out += separatorLength;
+        }
+        *out++ = whole[i];
+    }
+    if(digitsAfterDecimal){
+        memcpy(out, decimalSeparator, sizeof(wchar_t)*decimalLength);
+        out += decimalLength;
+        memcpy(out, fractional, sizeof(wchar_t)*digitsAfterDecimal);
+        out += digitsAfterDecimal;
+    }
+    if(negative && useParens) *out++ = L')';
+    *out = L'\0';
+
+    *pbstrOut = result;
+    return S_OK;
+}
+//----------------------------------------------------------------//
 
 // others
 double tm_double(tm t){
