@@ -99,7 +99,7 @@ private:
     static std::vector<_variant_t>   s_disps;
 
     std::mt19937_64 m_rnd;
-    double          m_rnd_last = (double)m_rnd() / UINT64_MAX;
+    double          m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
 
     std::vector<_com_ptr_t<_com_IIID<IClassFactory, &IID_IClassFactory> > > m_cfs;
 
@@ -763,7 +763,7 @@ public:
             m_rnd.seed(rd());
         }
 
-        m_rnd_last = (double)m_rnd() / UINT64_MAX;
+        m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
         
         return S_OK;
     }
@@ -781,10 +781,10 @@ public:
 
         if(pv1->llVal < 0){
             m_rnd.seed(pv1->llVal);
-            m_rnd_last = (double)m_rnd() / UINT64_MAX;
+            m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
         }else
         if(0 < pv1->llVal){
-            m_rnd_last = (double)m_rnd() / UINT64_MAX;
+            m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
         }else
         {
             // none
