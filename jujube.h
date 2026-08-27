@@ -3324,7 +3324,7 @@ private:
         m_scope.push_back( prog->m_dim_defs );
         std::vector<_variant_t>& newscope = m_scope.back();
         m_autodim.push_back( {} );
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
         int i = 0;
@@ -6255,7 +6255,7 @@ public:
         m_pgadims = &m_autodim.back();
 
         m_with.reserve(size);
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(size);
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6290,7 +6290,7 @@ public:
         m_pgadims = parent.m_pgadims;
 
         m_with.reserve(parent.m_with.capacity());
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(parent.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6331,7 +6331,7 @@ public:
         m_pgadims = source.m_pgadims;
 
         m_with.reserve(source.m_with.capacity());
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(source.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6402,7 +6402,7 @@ public:
         m_scope.push_back( prog.m_dim_defs );
         std::vector<_variant_t>& newscope = m_scope.back();
         m_autodim.push_back( {} );
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
         int i = 0;
@@ -6728,7 +6728,7 @@ public:
         m_pgadims = &m_autodim.back();
 
         m_with.clear();
-        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.clear();
         m_onerr.push_back(&CProcessor::onerr_goto0);
