@@ -2632,7 +2632,7 @@ public:
 
 
 extern "C"
-HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
+HRESULT CALLBACK DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
     if(wcscmp((const wchar_t*)*ppv, L"VBScript") == 0){
         g_oCFVBScript.AddRef();
         *ppv = (IClassFactory*)&g_oCFVBScript;

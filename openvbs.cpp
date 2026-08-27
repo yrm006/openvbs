@@ -2638,20 +2638,24 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
     }
 
 // IActiveScriptParse
-	HRESULT InitNew(void
+	HRESULT STDMETHODCALLTYPE InitNew(void
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
 		return S_OK;
 	}
 	
-	HRESULT AddScriptlet( 
+	HRESULT STDMETHODCALLTYPE AddScriptlet( 
 		/* [in] */ __RPC__in LPCOLESTR pstrDefaultName,
 		/* [in] */ __RPC__in LPCOLESTR pstrCode,
 		/* [in] */ __RPC__in LPCOLESTR pstrItemName,
 		/* [in] */ __RPC__in LPCOLESTR pstrSubItemName,
 		/* [in] */ __RPC__in LPCOLESTR pstrEventName,
 		/* [in] */ __RPC__in LPCOLESTR pstrDelimiter,
+#ifdef _WIN64
 		/* [in] */ DWORDLONG dwSourceContextCookie,
+#else
+		/* [in] */ DWORD     dwSourceContextCookie,
+#endif
 		/* [in] */ ULONG ulStartingLineNumber,
 		/* [in] */ DWORD dwFlags,
 		/* [out] */ __RPC__deref_out_opt BSTR *pbstrName,
@@ -2661,12 +2665,16 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT ParseScriptText( 
+	HRESULT STDMETHODCALLTYPE ParseScriptText( 
 		/* [in] */ __RPC__in LPCOLESTR pstrCode,
 		/* [in] */ __RPC__in LPCOLESTR pstrItemName,
 		/* [in] */ __RPC__in_opt IUnknown *punkContext,
 		/* [in] */ __RPC__in LPCOLESTR pstrDelimiter,
+#ifdef _WIN64
 		/* [in] */ DWORDLONG dwSourceContextCookie,
+#else
+		/* [in] */ DWORD     dwSourceContextCookie,
+#endif
 		/* [in] */ ULONG ulStartingLineNumber,
 		/* [in] */ DWORD dwFlags,
 		/* [out] */ __RPC__out VARIANT *pvarResult,
@@ -2699,7 +2707,7 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 	}
 
 // IActiveScript
-	HRESULT SetScriptSite( 
+	HRESULT STDMETHODCALLTYPE SetScriptSite( 
 		/* [in] */ __RPC__in_opt IActiveScriptSite *pass
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
@@ -2707,7 +2715,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return S_OK;
 	}
 	
-	HRESULT GetScriptSite( 
+	HRESULT STDMETHODCALLTYPE GetScriptSite( 
 		/* [in] */ __RPC__in REFIID riid,
 		/* [iid_is][out] */ __RPC__deref_out_opt void **ppvObject
 	){
@@ -2715,7 +2723,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT SetScriptState( 
+	HRESULT STDMETHODCALLTYPE SetScriptState( 
 		/* [in] */ SCRIPTSTATE ss
 	){
 		if(ss == SCRIPTSTATE_INITIALIZED){
@@ -2772,7 +2780,7 @@ fprintf(flog, "%s: %d\n", __func__, ss);  fflush(flog); fflush(flog);
 		return S_OK;
 	}
 	
-	HRESULT GetScriptState( 
+	HRESULT STDMETHODCALLTYPE GetScriptState( 
 		/* [out] */ __RPC__out SCRIPTSTATE *pssState
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
@@ -2781,7 +2789,7 @@ return S_OK;
 		return E_NOTIMPL;
 	}
 	
-	HRESULT Close(void
+	HRESULT STDMETHODCALLTYPE Close(void
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
 		m_pSite->Release(); m_pSite = nullptr;
@@ -2790,7 +2798,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return S_OK;
 	}
 	
-	HRESULT AddNamedItem( 
+	HRESULT STDMETHODCALLTYPE AddNamedItem( 
 		/* [in] */ __RPC__in LPCOLESTR pstrName,
 		/* [in] */ DWORD dwFlags
 	){
@@ -2809,7 +2817,7 @@ fprintf(flog, "%s: %ls %x\n", __func__, pstrName, dwFlags); fflush(flog);
 		return S_OK;
 	}
 	
-	HRESULT AddTypeLib( 
+	HRESULT STDMETHODCALLTYPE AddTypeLib( 
 		/* [in] */ __RPC__in REFGUID rguidTypeLib,
 		/* [in] */ DWORD dwMajor,
 		/* [in] */ DWORD dwMinor,
@@ -2819,7 +2827,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT GetScriptDispatch( 
+	HRESULT STDMETHODCALLTYPE GetScriptDispatch( 
 		/* [in] */ __RPC__in LPCOLESTR pstrItemName,
 		/* [out] */ __RPC__deref_out_opt IDispatch **ppdisp
 	){
@@ -2829,14 +2837,14 @@ return S_OK;
 		return E_NOTIMPL;
 	}
 	
-	HRESULT GetCurrentScriptThreadID( 
+	HRESULT STDMETHODCALLTYPE GetCurrentScriptThreadID( 
 		/* [out] */ __RPC__out SCRIPTTHREADID *pstidThread
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT GetScriptThreadID( 
+	HRESULT STDMETHODCALLTYPE GetScriptThreadID( 
 		/* [in] */ DWORD dwWin32ThreadId,
 		/* [out] */ __RPC__out SCRIPTTHREADID *pstidThread
 	){
@@ -2844,7 +2852,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT GetScriptThreadState( 
+	HRESULT STDMETHODCALLTYPE GetScriptThreadState( 
 		/* [in] */ SCRIPTTHREADID stidThread,
 		/* [out] */ __RPC__out SCRIPTTHREADSTATE *pstsState
 	){
@@ -2852,7 +2860,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT InterruptScriptThread( 
+	HRESULT STDMETHODCALLTYPE InterruptScriptThread( 
 		/* [in] */ SCRIPTTHREADID stidThread,
 		/* [in] */ __RPC__in const EXCEPINFO *pexcepinfo,
 		/* [in] */ DWORD dwFlags
@@ -2861,7 +2869,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		return E_NOTIMPL;
 	}
 	
-	HRESULT Clone( 
+	HRESULT STDMETHODCALLTYPE Clone( 
 		/* [out] */ __RPC__deref_out_opt IActiveScript **ppscript
 	){
 fprintf(flog, "%s\n", __func__); fflush(flog);
@@ -2869,7 +2877,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 	}
 
 // IDispatch
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
 		if(::IsEqualGUID(riid, IID_IActiveScriptParse)){
 			*ppvObject = (IActiveScriptParse*)this;
 		}else
@@ -2891,12 +2899,12 @@ fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
 		this->AddRef();
 		return S_OK;
 	}
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
 fprintf(flog, "%s: %ls\n", __func__, *rgszNames); fflush(flog);
         if(_wcsicmp(*rgszNames, L"xxxxxx") == 0){
             *rgDispId = 1;
@@ -2907,7 +2915,7 @@ fprintf(flog, "%s: %ls\n", __func__, *rgszNames); fflush(flog);
 
         return S_OK;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember == 1){
@@ -2929,7 +2937,7 @@ private:
     ULONG       m_refc   = 1;
 
 public:
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
 		if(::IsEqualGUID(riid, IID_IClassFactory)){
 			*ppvObject = (IClassFactory*)this;
 		}else
@@ -2946,10 +2954,10 @@ fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
 		this->AddRef();
 		return S_OK;
     }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
+    HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
 fprintf(flog, "%s\n", __func__); fflush(flog);
         OBScript* p = new OBScript();
         HRESULT hr = p->QueryInterface(riid, ppvObject);
@@ -2957,7 +2965,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
         return hr;
     }
     
-    HRESULT LockServer(BOOL fLock){
+    HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock){
         m_refc += fLock ? 1 : -1;
         return S_OK;
     }
@@ -2997,14 +3005,14 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 	return bReturn;
 }
 
-HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
+HRESULT CALLBACK DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
     g_oFactory.AddRef();
     *ppv = (IClassFactory*)&g_oFactory;
 
     return S_OK;
 }
 
-HRESULT DllCanUnloadNow(){
+HRESULT CALLBACK DllCanUnloadNow(){
     //### TODO
     return S_FALSE;
 }

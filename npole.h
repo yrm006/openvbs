@@ -13,6 +13,7 @@
 #define _wcsnicmp wcsncasecmp
 #define _wcsicmp wcscasecmp
 #define STDMETHODCALLTYPE 
+#define CALLBACK 
 
 #define S_OK             0x00000000
 #define S_FALSE          0x00000001

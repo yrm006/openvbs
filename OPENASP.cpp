@@ -74,13 +74,13 @@ IClassFactory* CFVBScript  = nullptr;
 class JPO : public IDispatch{
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){ return E_NOTIMPL; }
 public:
     JPO(){/*wprintf(L"%s\n", __func__);*/}
     virtual ~JPO(){}
@@ -89,7 +89,7 @@ public:
 class JPO_LINK : public JPO{
     _bstr_t m_href;
 
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         VARIANT* pv = pDispParams->rgvarg;
@@ -129,7 +129,7 @@ public:
 class JPO_IMG : public JPO{
     _bstr_t m_src;
 
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         std::wstring buf;
@@ -167,7 +167,7 @@ template<COLOR color>
 class JPO_COLOR : public JPO{
     _variant_t m_contents;
 
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         std::wstring buf;
@@ -214,7 +214,7 @@ template<FSIZE size>
 class JPO_SIZE : public JPO{
     _variant_t m_contents;
 
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         std::wstring buf;
@@ -263,7 +263,7 @@ template<TALIGN align>
 class JPO_ALIGN : public JPO{
     _variant_t m_contents;
 
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         std::wstring buf;
@@ -313,13 +313,13 @@ private:
     ULONG       m_refc   = 1;
     PMODE       m_pmode  = PM_CRLF;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         if(
             _wcsicmp(*rgszNames, L"print") == 0 ||
             _wcsicmp(*rgszNames, L"?") == 0     ||
@@ -365,7 +365,7 @@ private:
 
         return S_OK;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember == 1){//print,?
@@ -582,17 +582,17 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
         return DISP_E_MEMBERNOTFOUND;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         return DISP_E_MEMBERNOTFOUND;
@@ -613,13 +613,13 @@ private:
 
     Contents*   m_pCtnts;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         if(_wcsicmp(*rgszNames, L"Contents") == 0){
             *rgDispId = 1;
         }else
@@ -630,7 +630,7 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
 
         return S_OK;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember == 0){
@@ -654,17 +654,17 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
         return DISP_E_MEMBERNOTFOUND;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         return DISP_E_MEMBERNOTFOUND;
@@ -679,17 +679,17 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
 wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, *rgszNames);
         return DISP_E_MEMBERNOTFOUND;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         return DISP_E_MEMBERNOTFOUND;
@@ -710,13 +710,13 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         if(_wcsicmp(*rgszNames, L"WriteBlock") == 0){
             *rgDispId = 1;
         }else
@@ -730,7 +730,7 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
 
         return S_OK;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember == 1){
@@ -782,13 +782,13 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         if(_wcsicmp(*rgszNames, L"Send") == 0){
             *rgDispId = 1;
         }else
@@ -798,7 +798,7 @@ private:
 
         return S_OK;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember == 1){
@@ -1458,16 +1458,16 @@ public:
     OpenASP(){/*wprintf(L"%s\n", __func__);*/}
     virtual ~OpenASP(){/*wprintf(L"%s\n", __func__);*/}
 
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
-    HRESULT GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
-    HRESULT GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
         return E_NOTIMPL;
     }
-    HRESULT Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+    HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         WSA_STARTUP();
@@ -1508,16 +1508,16 @@ public:
     virtual ~CFactory(){}
 
 public:
-    HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
+    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
 
-    HRESULT CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
+    HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
         *ppvObject = new OpenASP;
         return S_OK;
     }
     
-    HRESULT LockServer(BOOL fLock){
+    HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock){
         m_refc += fLock ? 1 : -1;
         return S_OK;
     }
@@ -1526,7 +1526,7 @@ public:
 
 
 extern "C"
-HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
+HRESULT CALLBACK DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
     g_oFactory.AddRef();
     *ppv = (IClassFactory*)&g_oFactory;
 
@@ -1534,7 +1534,7 @@ HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv){
 }
 
 extern "C"
-HRESULT DllCanUnloadNow(){
+HRESULT CALLBACK DllCanUnloadNow(){
     return S_FALSE;
 }
 
