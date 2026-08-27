@@ -670,12 +670,22 @@ HRESULT VarCat(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
 
     _variant_t vL;
     if(pvarLeft->vt != VT_BSTR){
-        VariantChangeType(&vL, pvarLeft, 0, VT_BSTR);
+        if(pvarLeft->vt == VT_BOOL){
+            vL.vt = VT_BSTR;
+            vL.bstrVal = SysAllocString(pvarLeft->boolVal ? L"True" : L"False");
+        }else{
+            VariantChangeType(&vL, pvarLeft, 0, VT_BSTR);
+        }
         pvarLeft = &vL;
     }
     _variant_t vR;
     if(pvarRight->vt != VT_BSTR){
-        VariantChangeType(&vR, pvarRight, 0, VT_BSTR);
+        if(pvarRight->vt == VT_BOOL){
+            vR.vt = VT_BSTR;
+            vR.bstrVal = SysAllocString(pvarRight->boolVal ? L"True" : L"False");
+        }else{
+            VariantChangeType(&vR, pvarRight, 0, VT_BSTR);
+        }
         pvarRight = &vR;
     }
 
@@ -791,7 +801,7 @@ HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFl
         }else
         if(pvarSrc->vt == VT_R8){
             wchar_t buf[1+30 +1];
-            swprintf(buf, 1+30+1, L"%.15g", pvarSrc->dblVal);
+            swprintf(buf, 1+30+1, L"%.15G", pvarSrc->dblVal);
             pvargDest->vt = VT_BSTR;
             pvargDest->bstrVal = SysAllocString(buf);
         }else

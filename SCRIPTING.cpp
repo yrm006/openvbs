@@ -112,7 +112,7 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
             pVarResult->llVal = m_map.size();
         }else
         if(dispIdMember == 3){
-            //###TODO
+wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
         }else
         if(dispIdMember == DISPID_NEWENUM){
             pVarResult->vt = VT_UNKNOWN;
