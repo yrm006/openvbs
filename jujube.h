@@ -1847,13 +1847,13 @@ private:
                     // none: recurse
                 }else{
                     i->p = map_word(istring(L"@dim"));
-                    i->v = foundD->second.i;
+                    i->v = (long long)foundD->second.i;
                 }
             }else
             if(m_parent && (foundD = m_parent->m_dim_names.find(i->s)) != m_parent->m_dim_names.end()){
                 if(m_name.length()){
                     i->p = map_word(istring(L"@pdim"));
-                    i->v = foundD->second.i;
+                    i->v = (long long)foundD->second.i;
                 }else{
                     auto n = m_clo_names.size();
                     auto j = m_clo_names.insert({foundD->first, n});
@@ -1863,12 +1863,12 @@ private:
                     }
 
                     i->p = map_word(istring(L"@cdim"));
-                    i->v = m_clo_names[foundD->first];
+                    i->v = (long long)m_clo_names[foundD->first];
                 }
             }else
             if(m_granpa && (foundD = m_granpa->m_dim_names.find(i->s)) != m_granpa->m_dim_names.end()){
                 i->p = map_word(istring(L"@gdim"));
-                i->v = foundD->second.i;
+                i->v = (long long)foundD->second.i;
             }else
             if((foundL = m_labels.find(i->s)) != m_labels.end()){
                 i->p = map_word(istring(L"@literal"));
@@ -2567,7 +2567,7 @@ private:
 
         while(p-1 < &m_s.back()) m_s.pop_back();
 
-        m_s.push_back(*pvR);
+        m_s.push_back((_variant_t)*pvR);
 
         return true;
     }
@@ -2607,7 +2607,7 @@ private:
 
         while(p-1 < &m_s.back()) m_s.pop_back();
 
-        m_s.push_back(*pvR);
+        m_s.push_back((_variant_t)*pvR);
 
         return true;
     }
@@ -3324,7 +3324,7 @@ private:
         m_scope.push_back( prog->m_dim_defs );
         std::vector<_variant_t>& newscope = m_scope.back();
         m_autodim.push_back( {} );
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
         int i = 0;
@@ -3966,7 +3966,7 @@ private:
 
         if(pv->vt == (VT_BYREF|VT_VARIANT)) pv = pv->pvarVal;
 
-        m_with.back().push_back(*pv);
+        m_with.back().push_back((_variant_t)*pv);
 
         while(p-1 < &m_s.back()) m_s.pop_back();
 
@@ -6255,7 +6255,7 @@ public:
         m_pgadims = &m_autodim.back();
 
         m_with.reserve(size);
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(size);
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6290,7 +6290,7 @@ public:
         m_pgadims = parent.m_pgadims;
 
         m_with.reserve(parent.m_with.capacity());
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(parent.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6331,7 +6331,7 @@ public:
         m_pgadims = source.m_pgadims;
 
         m_with.reserve(source.m_with.capacity());
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.reserve(source.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
@@ -6402,7 +6402,7 @@ public:
         m_scope.push_back( prog.m_dim_defs );
         std::vector<_variant_t>& newscope = m_scope.back();
         m_autodim.push_back( {} );
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
         int i = 0;
@@ -6728,7 +6728,7 @@ public:
         m_pgadims = &m_autodim.back();
 
         m_with.clear();
-        m_with.push_back( { {{{{VT_EMPTY,0,0,0,{}}}}} } );
+        m_with.push_back( { (_variant_t){{{{VT_EMPTY,0,0,0,{}}}}} } );
 
         m_onerr.clear();
         m_onerr.push_back(&CProcessor::onerr_goto0);
