@@ -1157,15 +1157,23 @@ void SysFreeString(BSTR bstrString){
 }
 
 SAFEARRAY* SafeArrayCreate(VARTYPE vt, UINT cDims, SAFEARRAYBOUND *rgsabound){
-    ULONG total = 0;{
-        UINT i=0;
-        while(i<cDims) total += rgsabound[i++].cElements;
-    }
+    auto safe_array_total_elements_from_bounds = [](UINT dims, const SAFEARRAYBOUND* bounds) -> size_t {
+        if(!bounds || dims == 0){
+            return 0;
+        }
+        size_t total = 1;
+        for(UINT i = 0; i < dims; ++i){
+            total *= bounds[i].cElements;
+        }
+        return total;
+    };
+
+    const size_t total = safe_array_total_elements_from_bounds(cDims, rgsabound);
 
     if(vt == VT_VARIANT){
         VARIANT* data;{
             data = (VARIANT*)malloc(sizeof(VARIANT)*total);
-            ULONG i=0;
+            size_t i=0;
             while(i<total) VariantInit(&data[i++]);
         }
 
@@ -1173,7 +1181,7 @@ SAFEARRAY* SafeArrayCreate(VARTYPE vt, UINT cDims, SAFEARRAYBOUND *rgsabound){
         {
             psa->cDims = cDims;
             psa->fFeatures = FADF_AUTO|FADF_VARIANT;
-            psa->cbElements = sizeof(VARIANT)*total;
+            psa->cbElements = sizeof(VARIANT);
             psa->cLocks = 0;
             psa->pvData = data;
             memcpy(psa->rgsabound, rgsabound, sizeof(SAFEARRAYBOUND)*cDims);
@@ -1192,7 +1200,7 @@ SAFEARRAY* SafeArrayCreate(VARTYPE vt, UINT cDims, SAFEARRAYBOUND *rgsabound){
         {
             psa->cDims = cDims;
             psa->fFeatures = FADF_AUTO;
-            psa->cbElements = sizeof(BYTE)*total;
+            psa->cbElements = sizeof(BYTE);
             psa->cLocks = 0;
             psa->pvData = data;
             memcpy(psa->rgsabound, rgsabound, sizeof(SAFEARRAYBOUND)*cDims);
@@ -1212,12 +1220,23 @@ SAFEARRAY* SafeArrayCreateVector(VARTYPE vt, LONG lLbound, ULONG cElements){
 }
 
 HRESULT SafeArrayCopy(SAFEARRAY *psa, SAFEARRAY **ppsaOut){
+    auto safe_array_total_elements = [](const SAFEARRAY* array) -> size_t {
+        if(!array){
+            return 0;
+        }
+        size_t total = 1;
+        for(UINT i = 0; i < array->cDims; ++i){
+            total *= array->rgsabound[i].cElements;
+        }
+        return total;
+    };
+
     if(psa->fFeatures&FADF_VARIANT){
-        ULONG total = psa->cbElements/sizeof(VARIANT);
+        const size_t total = safe_array_total_elements(psa);
 
         VARIANT* data;{
             data = (VARIANT*)malloc(sizeof(VARIANT)*total);
-            ULONG i=0;
+            size_t i=0;
             while(i<total) VariantInit(&data[i++]);
             VARIANT* psrc = (VARIANT*)psa->pvData;
             i=0;
@@ -1239,8 +1258,9 @@ HRESULT SafeArrayCopy(SAFEARRAY *psa, SAFEARRAY **ppsaOut){
         return S_OK;
     }else{
         void* data;{
-            data = malloc(psa->cbElements);
-            memcpy(data, psa->pvData, psa->cbElements);
+            const size_t total_bytes = safe_array_total_elements(psa) * psa->cbElements;
+            data = malloc(total_bytes);
+            memcpy(data, psa->pvData, total_bytes);
         }
 
         *ppsaOut = (SAFEARRAY*)malloc(sizeof(SAFEARRAY) + sizeof(SAFEARRAYBOUND)*psa->cDims);
@@ -1260,11 +1280,22 @@ HRESULT SafeArrayCopy(SAFEARRAY *psa, SAFEARRAY **ppsaOut){
 }
 
 HRESULT SafeArrayDestroy(SAFEARRAY *psa){
+    auto safe_array_total_elements = [](const SAFEARRAY* array) -> size_t {
+        if(!array){
+            return 0;
+        }
+        size_t total = 1;
+        for(UINT i = 0; i < array->cDims; ++i){
+            total *= array->rgsabound[i].cElements;
+        }
+        return total;
+    };
+
     if(psa->fFeatures&FADF_VARIANT){
-        ULONG total = psa->cbElements/sizeof(VARIANT);
+        const size_t total = safe_array_total_elements(psa);
         VARIANT* data = (VARIANT*)psa->pvData;
 
-        ULONG i=0;
+        size_t i=0;
         while(i<total) VariantClear(&data[i++]);
     }
 
@@ -1840,5 +1871,3 @@ size_t wchar_utf8(char* out, size_t outc, const wchar_t* in){
 bool operator<(const _variant_t& l, const _variant_t& r){
     return (VarCmp((LPVARIANT)&l, (LPVARIANT)&r, 0, 0) == VARCMP_LT);
 }
-
-
