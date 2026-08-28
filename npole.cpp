@@ -292,6 +292,9 @@ HRESULT VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, ULONG dwFlags
               : (pvarLeft->boolVal > pvarRight->boolVal) ? VARCMP_GT
               : VARCMP_EQ;
     }else
+    if(pvarLeft->vt == VT_EMPTY && pvarRight->vt == VT_EMPTY){
+        return VARCMP_EQ;
+    }else
     {
 wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
         return E_NOTIMPL;

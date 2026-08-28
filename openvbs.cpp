@@ -89,11 +89,13 @@ public:
 
 
 class VBScript : public IDispatch{
+public:
+    typedef HRESULT (VBScript::*invoke_t)(DISPID, REFIID, LCID, WORD, DISPPARAMS*, VARIANT*, EXCEPINFO*, UINT*);
+
 private:
     ULONG       m_refc   = 1;
 
-    typedef HRESULT (VBScript::*invoke_t)(DISPID, REFIID, LCID, WORD, DISPPARAMS*, VARIANT*, EXCEPINFO*, UINT*);
-    union invoke_cast{ invoke_t i; void* v; };
+    static std::vector<invoke_t>     s_invokes;
     static int                       s_disps_n;
     static std::map<istring, DISPID> s_disps_ids;
     static std::vector<_variant_t>   s_disps;
@@ -112,6 +114,9 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
     }
 
 public:
+    IDispatch* m_pProcessor = nullptr; // weak ptr
+
+public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
     ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
     ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
@@ -122,7 +127,7 @@ public:
         auto foundC = s_disps_ids.find(*rgszNames);
         if(foundC != s_disps_ids.end()){
             *rgDispId = foundC->second;
-            return (s_disps[*rgDispId].vt == VT_EMPTY) ? S_OK : S_FALSE;
+            return (s_disps[*rgDispId].vt == VT_ERROR) ? S_OK : S_FALSE;
         }else{
             wchar_t path[256];{
                 wcsncpy(path, *rgszNames, 256)[255] = L'\0';
@@ -151,10 +156,11 @@ public:
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         if(dispIdMember < s_disps_n){
-            _variant_t& v = s_disps[dispIdMember];
-            if(v.vt == VT_EMPTY){
-                return (this->*((invoke_cast*)&v.byref)->i)(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+            invoke_t f = s_invokes[dispIdMember];
+            if(f){
+                return (this->*f)(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
             }else{
+                _variant_t& v = s_disps[dispIdMember];
                 return VariantCopy(pVarResult, &v);
             }
         }else{
@@ -2324,6 +2330,34 @@ wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
         return S_OK;
     }
 
+    HRESULT vbEval(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        _variant_t vd1{ {{{VT_ERROR,0,0,0,{0}}}} };
+
+        int an = pDispParams->cArgs;
+        VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
+        if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        _variant_t v1;
+        if(pv1->vt != VT_BSTR){
+            HRESULT hr = VariantChangeType(&v1, pv1, 0, VT_BSTR);
+            if(FAILED(hr)) return hr;
+            pv1 = &v1;
+        }
+
+        if(m_pProcessor){
+            DISPPARAMS param = {
+                pv1,
+                nullptr,
+                1,
+                0,
+            };
+            return m_pProcessor->Invoke(DISPID_EVAL, IID_NULL, 0, DISPATCH_METHOD, &param, pVarResult, pExcepInfo, puArgErr);
+        }
+
+        return E_NOTIMPL;
+    }
 };
 
 int VBScript::s_disps_n = 0;
@@ -2464,10 +2498,151 @@ std::map<istring, DISPID> VBScript::s_disps_ids{
     {L"FormatDateTime",         s_disps_n++},
     {L"FormatNumber",           s_disps_n++},
     {L"FormatPercent",          s_disps_n++},
+    {L"Eval",                   s_disps_n++},
+};
+
+std::vector<VBScript::invoke_t> VBScript::s_invokes{
+    &VBScript::_, // ""
+    //[ consts ]
+    nullptr, // vbBinaryCompare
+    nullptr, // vbTextCompare
+    nullptr, // vbSunday
+    nullptr, // vbMonday
+    nullptr, // vbTuesday
+    nullptr, // vbWednesday
+    nullptr, // vbThursday
+    nullptr, // vbFriday
+    nullptr, // vbSaturday
+    nullptr, // vbUseSystemDayOfWeek
+    nullptr, // vbFirstJan1
+    nullptr, // vbFirstFourDays
+    nullptr, // vbFirstFullWeek
+    nullptr, // vbGeneralDate
+    nullptr, // vbLongDate
+    nullptr, // vbShortDate
+    nullptr, // vbLongTime
+    nullptr, // vbShortTime
+    nullptr, // vbObjectError
+    nullptr, // vbUseDefault
+    nullptr, // vbTrue
+    nullptr, // vbFalse
+    nullptr, // vbEmpty
+    nullptr, // vbNull
+    nullptr, // vbInteger
+    nullptr, // vbLong
+    nullptr, // vbSingle
+    nullptr, // vbDouble
+    nullptr, // vbCurrency
+    nullptr, // vbDate
+    nullptr, // vbString
+    nullptr, // vbObject
+    nullptr, // vbError
+    nullptr, // vbBoolean
+    nullptr, // vbVariant
+    nullptr, // vbDataObject
+    nullptr, // vbDecimal
+    nullptr, // vbByte
+    nullptr, // vbArray
+    nullptr, // vbCr
+    nullptr, // VbCrLf
+    nullptr, // vbFormFeed
+    nullptr, // vbLf
+    nullptr, // vbNewLine
+    nullptr, // vbNullChar
+    nullptr, // vbNullString
+    nullptr, // vbTab
+    nullptr, // vbVerticalTab
+    //[ functions ]
+    &VBScript::vbCreateObject  , // CreateObject
+    &VBScript::vbGetObject     , // GetObject
+    &VBScript::vbTypeName      , // TypeName
+    &VBScript::vbVarDump       , // VarDump
+    &VBScript::vbVarType       , // VarType
+    &VBScript::vbIsArray       , // IsArray
+    &VBScript::vbIsObject      , // IsObject
+    &VBScript::vbIsEmpty       , // IsEmpty
+    &VBScript::vbIsNull        , // IsNull
+    &VBScript::vbIsDate        , // IsDate
+    &VBScript::vbIsNumeric     , // IsNumeric
+    &VBScript::vbCBool         , // CBool
+    &VBScript::vbCByte         , // CByte
+    &VBScript::vbCCur          , // CCur
+    &VBScript::vbCDate         , // CDate
+    &VBScript::vbCDbl          , // CDbl
+    &VBScript::vbCInt          , // CInt
+    &VBScript::vbCLng          , // CLng
+    &VBScript::vbCLnglng       , // CLnglng
+    &VBScript::vbCSng          , // CSng
+    &VBScript::vbCStr          , // CStr
+    &VBScript::vbLBound        , // LBound
+    &VBScript::vbUBound        , // UBound
+    &VBScript::vbArray         , // Array
+    &VBScript::vbRandomize     , // Randomize
+    &VBScript::vbRnd           , // Rnd
+    &VBScript::vbInt           , // Int
+    &VBScript::vbFix           , // Fix
+    &VBScript::vbRound         , // Round
+    &VBScript::vbSgn           , // Sgn
+    &VBScript::vbAbs           , // Abs
+    &VBScript::vbSqr           , // Sqr
+    &VBScript::vbSin           , // Sin
+    &VBScript::vbCos           , // Cos
+    &VBScript::vbTan           , // Tan
+    &VBScript::vbAtn           , // Atn
+    &VBScript::vbLog           , // Log
+    &VBScript::vbExp           , // Exp
+    &VBScript::vbLen           , // Len
+    &VBScript::vbLeft          , // Left
+    &VBScript::vbRight         , // Right
+    &VBScript::vbMid           , // Mid
+    &VBScript::vbLCase         , // LCase
+    &VBScript::vbUCase         , // UCase
+    &VBScript::vbLTrim         , // LTrim
+    &VBScript::vbRTrim         , // RTrim
+    &VBScript::vbTrim          , // Trim
+    &VBScript::vbInStr         , // InStr
+    &VBScript::vbInStrRev      , // InStrRev
+    &VBScript::vbStrComp       , // StrComp
+    &VBScript::vbReplace       , // Replace
+    &VBScript::vbStrReverse    , // StrReverse
+    &VBScript::vbString        , // String
+    &VBScript::vbSpace         , // Space
+    &VBScript::vbChr           , // Chr
+    &VBScript::vbChrW          , // ChrW
+    &VBScript::vbAsc           , // Asc
+    &VBScript::vbAscW          , // AscW
+    &VBScript::vbOct           , // Oct
+    &VBScript::vbHex           , // Hex
+    &VBScript::vbJoin          , // Join
+    &VBScript::vbSplit         , // Split
+    &VBScript::vbFilter        , // Filter
+    &VBScript::vbNow           , // Now
+    &VBScript::vbDate          , // Date
+    &VBScript::vbTime          , // Time
+    &VBScript::vbYear          , // Year
+    &VBScript::vbMonth         , // Month
+    &VBScript::vbDay           , // Day
+    &VBScript::vbWeekday       , // Weekday
+    &VBScript::vbHour          , // Hour
+    &VBScript::vbMinute        , // Minute
+    &VBScript::vbSecond        , // Second
+    &VBScript::vbTimer         , // Timer
+    &VBScript::vbDateAdd       , // DateAdd
+    &VBScript::vbDateDiff      , // DateDiff
+    &VBScript::vbDatePart      , // DatePart
+    &VBScript::vbDateSerial    , // DateSerial
+    &VBScript::vbDateValue     , // DateValue
+    &VBScript::vbTimeSerial    , // TimeSerial
+    &VBScript::vbTimeValue     , // TimeValue
+    &VBScript::vbFormatCurrency, // FormatCurrency
+    &VBScript::vbFormatDateTime, // FormatDateTime
+    &VBScript::vbFormatNumber  , // FormatNumber
+    &VBScript::vbFormatPercent , // FormatPercent
+    &VBScript::vbEval          , // Eval
 };
 
 std::vector<_variant_t> VBScript::s_disps{
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::_}).v}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
     // consts
     _variant_t{ {{{VT_I8  ,0,0,0,{(long long)0}}}} },
     _variant_t{ {{{VT_I8  ,0,0,0,{(long long)1}}}} },
@@ -2518,91 +2693,92 @@ std::vector<_variant_t> VBScript::s_disps{
     _variant_t{ {{{VT_BSTR,0,0,0,{(long long)SysAllocString(L"\x09")}}}} },
     _variant_t{ {{{VT_BSTR,0,0,0,{(long long)SysAllocString(L"\x0b")}}}} },
     // functions
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCreateObject}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbGetObject}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTypeName}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbVarDump}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbVarType}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsArray}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsObject}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsEmpty}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsNull}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsDate}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbIsNumeric}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCBool}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCByte}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCCur}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCDate}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCDbl}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCInt}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCLng}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCLnglng}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCSng}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCStr}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLBound}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbUBound}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbArray}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbRandomize}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbRnd}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbInt}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFix}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbRound}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSgn}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAbs}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSqr}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSin}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbCos}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTan}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAtn}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLog}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbExp}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLen}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLeft}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbRight}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbMid}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLCase}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbUCase}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbLTrim}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbRTrim}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTrim}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbInStr}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbInStrRev}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbStrComp}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbReplace}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbStrReverse}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbString}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSpace}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbChr}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbChrW}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAsc}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbAscW}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbOct}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbHex}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbJoin}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSplit}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFilter}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbNow}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDate}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTime}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbYear}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbMonth}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDay}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbWeekday}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbHour}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbMinute}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbSecond}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTimer}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDateAdd}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDateDiff}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDatePart}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDateSerial}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbDateValue}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTimeSerial}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbTimeValue}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFormatCurrency}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFormatDateTime}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFormatNumber}).v}}}} },
-    _variant_t{ {{{VT_EMPTY,0,0,0,{(long long)(invoke_cast{&VBScript::vbFormatPercent}).v}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} },
 };
 
 
@@ -2700,6 +2876,9 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		m_pProg = new CProgram(code);
         if(m_pPrcs) delete m_pPrcs;
         m_pPrcs = new CProcessor(m_pProg, &m_vbs, &m_ext);
+
+        // for Eval
+        m_vbs.m_pProcessor = m_pPrcs;
 
         free(buf);
 

@@ -19,6 +19,7 @@
 
 
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
+#define DISPID_EVAL           1000
 #define NAME L"Jujube"
 
 enum VARENUMX{
@@ -1821,6 +1822,23 @@ private:
         return c+len;
     }
 
+public:
+    const wchar_t* parse_eval(const wchar_t* c, size_t len){
+        m_name = L"";
+
+        m_dim_names[m_name] = {
+            DSC_PUBLIC,
+            m_dim_defs.size()
+        };
+
+        m_dim_defs.push_back(_variant_t());
+
+        m_parse_mode = &CProgram::parse_;
+
+        return parse_(c, len);
+    }
+
+public:
     void bind(){
         auto i = m_code.begin();
         while(i != m_code.end()){
@@ -2133,11 +2151,6 @@ public:
             }
         }
 
-        if(m_code.back().s != L":"){
-            istring s(L":");
-            m_code.push_back( { s, map_word(s), _variant_t(), m_lines } );
-        }
-
         if(mode == &CProgram::parse_class_name){
             m_code.clear();
         }
@@ -2155,6 +2168,11 @@ public:
 
     virtual ~CProgram(){
 //wprintf(L"$$$%s:%ls\n", __func__, m_name.c_str());
+    }
+
+    bool isReady(size_t& errline){
+        errline = m_lines+1;
+        return m_parse_mode;
     }
 
     void dump(){
@@ -5563,13 +5581,11 @@ private:
                 }
             }
         }else
-        if( (&pc-1)->p == map_word(L",")){
-            {
-                _variant_t v;
-                v.wReserved1 = VTX_INST;
-                v.byref = (void*)&s_insts[INST_op_parenL];
-                m_s.push_back( v );
-            }
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_op_parenL];
+            m_s.push_back( v );
         }
 
         return true;
@@ -5728,6 +5744,10 @@ private:
 
     bool word_cdim(word_t& pc){
         _variant_t& dim = m_cdims[pc.v.ullVal];
+        if(dim.vt & VT_BYREF){
+            m_s.push_back(_variant_t());
+            *(VARIANT*)&m_s.back() = dim;
+        }else
         {
             _variant_t v;
             v.vt = (VT_BYREF|VT_VARIANT);
@@ -5795,6 +5815,21 @@ private:
     }
 
     bool word_exit(word_t& pc){
+        auto i = m_s.rbegin();
+        while(!( i->wReserved1 == VTX_GROUND )){
+            if(i->wReserved1 == VTX_INST){
+                if(*((inst_t*)i->byref) == &CProcessor::op_call) --m_pc;
+
+                if(! (this->*(*(inst_t*)i->byref))(&*i) ){
+                    i = m_s.rend();
+                    break;
+                }
+                i = m_s.rbegin();
+            }else{
+                ++i;
+            }
+        }
+
         std::vector<_variant_t> rets;
         {
             auto i = m_s.rbegin();
@@ -6063,7 +6098,7 @@ private:
         return true;
     }
 
-private:
+public:
     void bind(CProgram* pp){
         auto i = pp->m_code.begin();
         while(i != pp->m_code.end()){
@@ -6835,6 +6870,52 @@ public:
                         m_s.pop_back();
                     }
                 }
+            }
+        }else
+        if(dispIdMember == DISPID_EVAL){// Eval
+            // program
+            std::wstring src = L"(" + std::wstring(pDispParams->rgvarg[0].bstrVal) + L")";
+
+            const wchar_t* pSource = src.c_str();
+            CProgram oProgram(pSource, &CProgram::parse_eval, m_pp);
+
+            oProgram.m_option_explicit = false;
+
+            size_t errline;
+            if(oProgram.isReady(errline)){
+                oProgram.bind();
+
+                // process
+                CProcessor oProcessor(*this, &oProgram);
+                oProcessor.bind(&oProgram);
+                oProcessor.m_pc = oProcessor.m_pp->m_code.size()-1;   // to don't-run by default
+
+                size_t i = 0;
+                while(i < oProcessor.m_pp->m_clo_ids.size()){
+                    _variant_t& v = m_scope.back()[oProcessor.m_pp->m_clo_ids[i]];
+                    if(v.vt == (VT_BYREF|VT_VARIANT)){
+                        oProcessor.m_cdims[i] = v;
+                    }else{
+                        oProcessor.m_cdims[i].vt = VT_BYREF | VT_VARIANT;
+                        oProcessor.m_cdims[i].pvarVal = &v;
+                    }
+                    ++i;
+                }
+
+                _variant_t result;
+
+                DISPPARAMS param = { nullptr, nullptr, 0, 0 };
+                hr = oProcessor.Invoke(0, IID_NULL, 0, DISPATCH_METHOD, &param, &result, pExcepInfo, puArgErr);
+
+                if(SUCCEEDED(hr)){
+                    if(result.vt == (VT_BYREF|VT_VARIANT)){
+                        VariantCopy(pVarResult, result.pvarVal);
+                    }else{
+                        *pVarResult = result.Detach();
+                    }
+                }
+            }else{
+                return E_INVALIDARG;
             }
         }
 
