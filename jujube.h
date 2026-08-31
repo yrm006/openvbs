@@ -19,7 +19,8 @@
 
 
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
-#define DISPID_EVAL           1000
+#define DISPID_EVAL           -1
+#define DISPID_EXECUTE        -2
 #define NAME L"Jujube"
 
 enum VARENUMX{
@@ -1833,6 +1834,25 @@ public:
 
         m_dim_defs.push_back(_variant_t());
 
+        m_option_explicit = false;
+
+        m_parse_mode = &CProgram::parse_;
+
+        return parse_(c, len);
+    }
+
+    const wchar_t* parse_execute(const wchar_t* c, size_t len){
+        m_name = L"";
+
+        m_dim_names[m_name] = {
+            DSC_PUBLIC,
+            m_dim_defs.size()
+        };
+
+        m_dim_defs.push_back(_variant_t());
+
+        m_option_explicit = false;
+
         m_parse_mode = &CProgram::parse_;
 
         return parse_(c, len);
@@ -2326,6 +2346,7 @@ private:
     std::vector<std::map<istring, _variant_t>, OnceAllocator<std::map<istring, _variant_t> > >  m_autodim;
     std::vector<std::vector<_variant_t>, OnceAllocator<std::vector<_variant_t> > >              m_with;
     std::vector<onerr_t, OnceAllocator<onerr_t> >                                               m_onerr;
+    std::vector<std::vector<_proc_ptr_t>>                                                       m_exec;
     std::vector<_variant_t, OnceAllocator<_variant_t> >                                         m_s;
 
     std::vector<_variant_t>         m_cdims;
@@ -2390,9 +2411,10 @@ private:
 
         if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
 
-        _variant_t v0(0LL);
+        _variant_t vplus(+1LL);
+
         _variant_t v;
-        if( FAILED(m_err->m_hr = VarAdd(&v0, pvR, &v)) ){
+        if( FAILED(m_err->m_hr = VarMul(&vplus, pvR, &v)) ){
             m_mode = &CProcessor::clock_throw_;
             --m_pc;
             return false;
@@ -2431,9 +2453,10 @@ private:
 
         if(pvR->vt == (VT_BYREF|VT_VARIANT)) pvR = pvR->pvarVal;
 
-        _variant_t v0(0LL);
+        _variant_t vminus(-1LL);
+
         _variant_t v;
-        if( FAILED(m_err->m_hr = VarSub(&v0, pvR, &v)) ){
+        if( FAILED(m_err->m_hr = VarMul(&vminus, pvR, &v)) ){
             m_mode = &CProcessor::clock_throw_;
             --m_pc;
             return false;
@@ -3345,6 +3368,7 @@ private:
         m_autodim.push_back( {} );
         m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
+        m_exec.push_back( {} );
 
         int i = 0;
         while( (p+1)+i <= &m_s.back() ){
@@ -4582,6 +4606,7 @@ private:
                 m_autodim.pop_back();
                 m_with.pop_back();
                 m_onerr.pop_back();
+                m_exec.pop_back();
             }
 
             return (this->*m_onerr.back())();
@@ -5581,6 +5606,11 @@ private:
                 }
             }
         }else
+        if(pv->vt == (VT_BYREF|VT_VARIANT) && pv->pvarVal->vt == VT_EMPTY){
+            //### m_mode = &CProcessor::clock_throw_typemismatch;
+            //### --m_pc;
+            return false;
+        }else
         {
             _variant_t v;
             v.wReserved1 = VTX_INST;
@@ -5882,6 +5912,7 @@ private:
                 m_autodim.pop_back();
                 m_with.pop_back();
                 m_onerr.pop_back();
+                m_exec.pop_back();
 
                 if(fromInvoke){
                     // none
@@ -6068,6 +6099,55 @@ private:
     }
 
     bool word_(word_t& pc){
+        auto pbexe = &m_exec.back();    // for Execute
+        //auto pfexe = &m_exec.front();   // for ExecuteGlobal
+
+        auto i = pbexe->rbegin();
+        while(i != pbexe->rend()){
+            CProcessor* pproc = *i;
+            CProgram*   pp = pproc->m_p0;
+
+            DISPID id;
+            LPOLESTR name = (LPOLESTR)pc.s.c_str();
+            if(pproc->GetIDsOfNames(IID_NULL, &name, 1, 0, &id) == S_OK){
+                {
+                    _variant_t v( (IDispatch*)pproc );
+                    v.wReserved1 = VTX_NONE;
+                    m_s.push_back(v);
+                }
+                {
+                    _variant_t v;
+                    v.vt = VT_I4;
+                    v.lVal = id;
+                    m_s.push_back(v);
+                }
+                {
+                    _variant_t v;
+                    v.wReserved1 = VTX_INST;
+                    v.byref = (void*)&s_insts[INST_op_invoke];
+                    m_s.push_back(v);
+                }
+
+                return true;
+            }
+
+            auto c = pp->m_classes.find(pc.s);
+            if(c != pp->m_classes.end()){
+                {
+                    _variant_t v;
+                    v.wReserved1 = VTX_CLASS;
+                    v.byref = c->second;
+                    m_s.push_back(v);
+                }
+
+                return true;
+            }
+
+            ++i;
+        }
+
+
+
         if(m_pp->m_option_explicit){
             m_mode = &CProcessor::clock_throw_unknownname;
             --m_pc;
@@ -6296,6 +6376,8 @@ public:
         m_onerr.reserve(size);
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
+        m_exec.push_back( {} );
+
         m_s.reserve(size*8);
 
         bind(m_pp);
@@ -6330,6 +6412,8 @@ public:
 
         m_onerr.reserve(parent.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
+
+        m_exec.push_back( {} );
 
         m_s.reserve(parent.m_s.capacity());
 
@@ -6371,6 +6455,8 @@ public:
 
         m_onerr.reserve(source.m_onerr.capacity());
         m_onerr.push_back(&CProcessor::onerr_goto0);
+
+        m_exec.push_back( {} );
 
         m_s.reserve(source.m_s.capacity());
 // wprintf(L"$$$%s-copy\n", __func__);
@@ -6440,6 +6526,7 @@ public:
         m_autodim.push_back( {} );
         m_with.push_back( { _variant_t{{{{VT_EMPTY,0,0,0,{}}}}} } );
         m_onerr.push_back(&CProcessor::onerr_goto0);
+        m_exec.push_back( {} );
 
         int i = 0;
         while(i<argn){
@@ -6769,6 +6856,9 @@ public:
         m_onerr.clear();
         m_onerr.push_back(&CProcessor::onerr_goto0);
 
+        m_exec.clear();
+        m_exec.push_back( {} );
+
         m_s.clear();
     }
 
@@ -6778,9 +6868,14 @@ public:
 private:
     ULONG       m_refc   = 1;
 
-    _variant_t* m_pvDispatching;
-    CProgram*   m_pfDispatching;
-    CProgram*   m_ppDispatching;
+    struct dispatch_t {
+        _variant_t* pv;   // dim
+        CProgram*   pf;   // function/get
+        CProgram*   pp;   // property let/set
+    };
+
+    std::vector<dispatch_t>   m_disp;
+    std::map<istring, DISPID> m_disp_names;
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
@@ -6790,35 +6885,44 @@ public:
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
-        m_pvDispatching = nullptr;
-        m_pfDispatching = nullptr;
-        m_ppDispatching = nullptr;
+        auto found = m_disp_names.find(*rgszNames);
+        if(found != m_disp_names.end()){
+            *rgDispId = found->second;
+            return S_OK;
+        }
+
+        _variant_t* pvDispatching = nullptr;
+        CProgram*   pfDispatching = nullptr;
+        CProgram*   ppDispatching = nullptr;
 
         decltype(m_p0->m_dim_names)::const_iterator foundD;
         if((foundD = m_p0->m_dim_names.find(*rgszNames)) != m_p0->m_dim_names.end() && foundD->second.s == DSC_PUBLIC){
             if(m_parent){
-                m_pvDispatching = &m_scope.front()[foundD->second.i];
+                pvDispatching = &m_scope.front()[foundD->second.i];
             }else{
-                m_pvDispatching = &(*m_pgdims)[foundD->second.i];
+                pvDispatching = &(*m_pgdims)[foundD->second.i];
             }
-            *rgDispId = 1;
         }else{
             decltype(m_p0->m_funcs)::const_iterator foundF;
             if((foundF = m_p0->m_funcs.find(*rgszNames)) != m_p0->m_funcs.end() && foundF->second.s == DSC_PUBLIC){
-                m_pfDispatching = foundF->second.p;
+                pfDispatching = foundF->second.p;
             }
 
             decltype(m_p0->m_plets)::const_iterator foundL;
             if((foundL = m_p0->m_plets.find(*rgszNames)) != m_p0->m_plets.end() && foundL->second.s == DSC_PUBLIC){
-                m_ppDispatching = foundL->second.p;
-            }
-
-            if(m_pfDispatching || m_ppDispatching){
-                *rgDispId = 2;
+                ppDispatching = foundL->second.p;
             }
         }
 
-        return (m_pvDispatching || m_pfDispatching || m_ppDispatching) ? S_OK : DISP_E_UNKNOWNNAME;
+        if(pvDispatching || pfDispatching || ppDispatching){
+            m_disp.push_back( {pvDispatching, pfDispatching, ppDispatching} );
+            *rgDispId = m_disp.size();
+            m_disp_names[*rgszNames] = *rgDispId;
+
+            return S_OK;
+        }
+
+        return DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
@@ -6848,38 +6952,12 @@ public:
                 }
             }
         }else
-        if(dispIdMember == 1){
-            if(wFlags == DISPATCH_PROPERTYPUT){
-                hr = VariantCopy(m_pvDispatching, pDispParams->rgvarg);
-            }else{
-                hr = VariantCopy(pVarResult, m_pvDispatching);
-            }
-        }else
-        if(dispIdMember == 2){
-            if(wFlags == DISPATCH_PROPERTYPUT){
-                if(m_ppDispatching){
-                    if(SUCCEEDED( hr = (*this)(*m_ppDispatching, pDispParams->rgvarg, pDispParams->cArgs) )){
-                        *pVarResult = m_s.back().Detach();
-                        m_s.pop_back();
-                    }
-                }
-            }else{
-                if(m_pfDispatching){
-                    if(SUCCEEDED( hr = (*this)(*m_pfDispatching, pDispParams->rgvarg, pDispParams->cArgs) )){
-                        *pVarResult = m_s.back().Detach();
-                        m_s.pop_back();
-                    }
-                }
-            }
-        }else
-        if(dispIdMember == DISPID_EVAL){// Eval
+        if(dispIdMember == DISPID_EVAL){
             // program
             std::wstring src = L"(" + std::wstring(pDispParams->rgvarg[0].bstrVal) + L")";
 
             const wchar_t* pSource = src.c_str();
             CProgram oProgram(pSource, &CProgram::parse_eval, m_pp);
-
-            oProgram.m_option_explicit = false;
 
             size_t errline;
             if(oProgram.isReady(errline)){
@@ -6888,7 +6966,6 @@ public:
                 // process
                 CProcessor oProcessor(*this, &oProgram);
                 oProcessor.bind(&oProgram);
-                oProcessor.m_pc = oProcessor.m_pp->m_code.size()-1;   // to don't-run by default
 
                 size_t i = 0;
                 while(i < oProcessor.m_pp->m_clo_ids.size()){
@@ -6902,20 +6979,73 @@ public:
                     ++i;
                 }
 
-                _variant_t result;
-
-                DISPPARAMS param = { nullptr, nullptr, 0, 0 };
-                hr = oProcessor.Invoke(0, IID_NULL, 0, DISPATCH_METHOD, &param, &result, pExcepInfo, puArgErr);
-
-                if(SUCCEEDED(hr)){
-                    if(result.vt == (VT_BYREF|VT_VARIANT)){
-                        VariantCopy(pVarResult, result.pvarVal);
+                if(SUCCEEDED(hr = oProcessor())){
+                    VARIANT* pv = &oProcessor.m_s.back();
+                    if(pv->vt == (VT_BYREF|VT_VARIANT)){
+                        VariantCopy(pVarResult, pv->pvarVal);   // *copy* because oProcessor will be dead soon
                     }else{
-                        *pVarResult = result.Detach();
+                        *pVarResult = oProcessor.m_s.back().Detach();
                     }
+                    oProcessor.m_s.pop_back();
+
+                    oProcessor.m_s.pop_back();   // VTX_GROUND
                 }
             }else{
                 return E_INVALIDARG;
+            }
+        }else
+        if(dispIdMember == DISPID_EXECUTE){
+            // program
+            const wchar_t* pSource = pDispParams->rgvarg[0].bstrVal;
+            _prog_ptr_t prog(new CProgram(pSource, &CProgram::parse_execute, m_pp), false);
+
+            size_t errline;
+            if(prog->isReady(errline)){
+                prog->bind();
+
+                // process
+                _proc_ptr_t proc(new CProcessor(*this, prog));
+                proc->bind(prog);
+
+                size_t i = 0;
+                while(i < proc->m_pp->m_clo_ids.size()){
+                    _variant_t& v = m_scope.back()[proc->m_pp->m_clo_ids[i]];
+                    if(v.vt == (VT_BYREF|VT_VARIANT)){
+                        proc->m_cdims[i] = v;
+                    }else{
+                        proc->m_cdims[i].vt = VT_BYREF | VT_VARIANT;
+                        proc->m_cdims[i].pvarVal = &v;
+                    }
+                    ++i;
+                }
+
+                if(SUCCEEDED(hr = (*proc)())){
+                    m_exec.back().push_back( proc );
+                }
+            }else{
+                return E_INVALIDARG;
+            }
+        }else
+        {
+            dispatch_t& disp = m_disp[dispIdMember-1];
+            if(disp.pv){
+                if(wFlags == DISPATCH_PROPERTYPUT){
+                    hr = VariantCopy(disp.pv, pDispParams->rgvarg);
+                }else{
+                    hr = VariantCopy(pVarResult, disp.pv);
+                }
+            }else
+            if(wFlags == DISPATCH_PROPERTYPUT){
+                if(SUCCEEDED( hr = (*this)(*disp.pp, pDispParams->rgvarg, pDispParams->cArgs) )){
+                    *pVarResult = m_s.back().Detach();
+                    m_s.pop_back();
+                }
+            }else
+            {
+                if(SUCCEEDED( hr = (*this)(*disp.pf, pDispParams->rgvarg, pDispParams->cArgs) )){
+                    *pVarResult = m_s.back().Detach();
+                    m_s.pop_back();
+                }
             }
         }
 
