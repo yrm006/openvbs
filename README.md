@@ -54,7 +54,7 @@ Bingo Machine:
 
 ## How to build
 
-[Windows] x64 Native Tools Command Prompt for VS 2019
+[Windows] x64/x86 Native Tools Command Prompt for VS 2022
 
     > nmake -f makefile.win
 
@@ -79,4 +79,4 @@ Bingo Machine:
 [NaturalStyle PREMIUM](https://p.na-s.jp)
 
 ---
-yrm.20191209
+yrm.20260901
