@@ -2387,6 +2387,35 @@ wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
 
         return E_NOTIMPL;
     }
+
+    HRESULT vbExecuteGlobal(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
+        DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
+    {
+        _variant_t vd1{ {{{VT_ERROR,0,0,0,{0}}}} };
+
+        int an = pDispParams->cArgs;
+        VARIANT* pv1 = (0 <= an-1) ? &pDispParams->rgvarg[an-1] : &vd1;
+        if(pv1->vt == (VT_BYREF|VT_VARIANT)) pv1 = pv1->pvarVal;
+
+        _variant_t v1;
+        if(pv1->vt != VT_BSTR){
+            HRESULT hr = VariantChangeType(&v1, pv1, 0, VT_BSTR);
+            if(FAILED(hr)) return hr;
+            pv1 = &v1;
+        }
+
+        if(m_pProcessor){
+            DISPPARAMS param = {
+                pv1,
+                nullptr,
+                1,
+                0,
+            };
+            return m_pProcessor->Invoke(DISPID_EXECUTEGLOBAL, IID_NULL, 0, DISPATCH_METHOD, &param, pVarResult, pExcepInfo, puArgErr);
+        }
+
+        return E_NOTIMPL;
+    }
 };
 
 int VBScript::s_disps_n = 0;
@@ -2529,6 +2558,7 @@ std::map<istring, DISPID> VBScript::s_disps_ids{
     {L"FormatPercent",          s_disps_n++},
     {L"Eval",                   s_disps_n++},
     {L"Execute",                s_disps_n++},
+    {L"ExecuteGlobal",          s_disps_n++},
 };
 
 std::vector<VBScript::invoke_t> VBScript::s_invokes{
@@ -2670,6 +2700,7 @@ std::vector<VBScript::invoke_t> VBScript::s_invokes{
     &VBScript::vbFormatPercent ,
     &VBScript::vbEval          ,
     &VBScript::vbExecute       ,
+    &VBScript::vbExecuteGlobal ,
 };
 
 std::vector<_variant_t> VBScript::s_disps{
@@ -2811,6 +2842,7 @@ std::vector<_variant_t> VBScript::s_disps{
     _variant_t{ {{{VT_ERROR,0,0,0,{}}}} }, // FormatPercent
     _variant_t{ {{{VT_ERROR,0,0,0,{}}}} }, // Eval
     _variant_t{ {{{VT_ERROR,0,0,0,{}}}} }, // Execute
+    _variant_t{ {{{VT_ERROR,0,0,0,{}}}} }, // ExecuteGlobal
 };
 
 

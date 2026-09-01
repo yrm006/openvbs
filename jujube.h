@@ -21,6 +21,7 @@
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
 #define DISPID_EVAL           -1
 #define DISPID_EXECUTE        -2
+#define DISPID_EXECUTEGLOBAL  -3
 #define NAME L"Jujube"
 
 enum VARENUMX{
@@ -1842,6 +1843,23 @@ public:
     }
 
     const wchar_t* parse_execute(const wchar_t* c, size_t len){
+        m_name = L"";
+
+        m_dim_names[m_name] = {
+            DSC_PUBLIC,
+            m_dim_defs.size()
+        };
+
+        m_dim_defs.push_back(_variant_t());
+
+        m_option_explicit = false;
+
+        m_parse_mode = &CProgram::parse_;
+
+        return parse_(c, len);
+    }
+
+    const wchar_t* parse_executeglobal(const wchar_t* c, size_t len){
         m_name = L"";
 
         m_dim_names[m_name] = {
@@ -6099,51 +6117,100 @@ private:
     }
 
     bool word_(word_t& pc){
-        auto pbexe = &m_exec.back();    // for Execute
-        //auto pfexe = &m_exec.front();   // for ExecuteGlobal
+        // for Execute
+        auto pbexe = &m_exec.back();
+        {
+            auto i = pbexe->rbegin();
+            while(i != pbexe->rend()){
+                CProcessor* pproc = *i;
+                CProgram*   pp = pproc->m_p0;
 
-        auto i = pbexe->rbegin();
-        while(i != pbexe->rend()){
-            CProcessor* pproc = *i;
-            CProgram*   pp = pproc->m_p0;
+                DISPID id;
+                LPOLESTR name = (LPOLESTR)pc.s.c_str();
+                if(pproc->GetIDsOfNames(IID_NULL, &name, 1, 0, &id) == S_OK){
+                    {
+                        _variant_t v( (IDispatch*)pproc );
+                        v.wReserved1 = VTX_NONE;
+                        m_s.push_back(v);
+                    }
+                    {
+                        _variant_t v;
+                        v.vt = VT_I4;
+                        v.lVal = id;
+                        m_s.push_back(v);
+                    }
+                    {
+                        _variant_t v;
+                        v.wReserved1 = VTX_INST;
+                        v.byref = (void*)&s_insts[INST_op_invoke];
+                        m_s.push_back(v);
+                    }
 
-            DISPID id;
-            LPOLESTR name = (LPOLESTR)pc.s.c_str();
-            if(pproc->GetIDsOfNames(IID_NULL, &name, 1, 0, &id) == S_OK){
-                {
-                    _variant_t v( (IDispatch*)pproc );
-                    v.wReserved1 = VTX_NONE;
-                    m_s.push_back(v);
-                }
-                {
-                    _variant_t v;
-                    v.vt = VT_I4;
-                    v.lVal = id;
-                    m_s.push_back(v);
-                }
-                {
-                    _variant_t v;
-                    v.wReserved1 = VTX_INST;
-                    v.byref = (void*)&s_insts[INST_op_invoke];
-                    m_s.push_back(v);
+                    return true;
                 }
 
-                return true;
+                auto c = pp->m_classes.find(pc.s);
+                if(c != pp->m_classes.end()){
+                    {
+                        _variant_t v;
+                        v.wReserved1 = VTX_CLASS;
+                        v.byref = c->second;
+                        m_s.push_back(v);
+                    }
+
+                    return true;
+                }
+
+                ++i;
             }
+        }
 
-            auto c = pp->m_classes.find(pc.s);
-            if(c != pp->m_classes.end()){
-                {
-                    _variant_t v;
-                    v.wReserved1 = VTX_CLASS;
-                    v.byref = c->second;
-                    m_s.push_back(v);
+        // for ExecuteGlobal
+        auto pfexe = &m_exec.front();
+        if(pbexe != pfexe){
+            auto i = pfexe->rbegin();
+            while(i != pfexe->rend()){
+                CProcessor* pproc = *i;
+                CProgram*   pp = pproc->m_p0;
+
+                DISPID id;
+                LPOLESTR name = (LPOLESTR)pc.s.c_str();
+                if(pproc->GetIDsOfNames(IID_NULL, &name, 1, 0, &id) == S_OK){
+                    {
+                        _variant_t v( (IDispatch*)pproc );
+                        v.wReserved1 = VTX_NONE;
+                        m_s.push_back(v);
+                    }
+                    {
+                        _variant_t v;
+                        v.vt = VT_I4;
+                        v.lVal = id;
+                        m_s.push_back(v);
+                    }
+                    {
+                        _variant_t v;
+                        v.wReserved1 = VTX_INST;
+                        v.byref = (void*)&s_insts[INST_op_invoke];
+                        m_s.push_back(v);
+                    }
+
+                    return true;
                 }
 
-                return true;
-            }
+                auto c = pp->m_classes.find(pc.s);
+                if(c != pp->m_classes.end()){
+                    {
+                        _variant_t v;
+                        v.wReserved1 = VTX_CLASS;
+                        v.byref = c->second;
+                        m_s.push_back(v);
+                    }
 
-            ++i;
+                    return true;
+                }
+
+                ++i;
+            }
         }
 
 
@@ -7021,6 +7088,43 @@ public:
 
                 if(SUCCEEDED(hr = (*proc)())){
                     m_exec.back().push_back( proc );
+                }
+            }else{
+                return E_INVALIDARG;
+            }
+        }else
+        if(dispIdMember == DISPID_EXECUTEGLOBAL){
+            CProcessor* pProc0 = this;
+            while(pProc0->m_parent){
+                pProc0 = pProc0->m_parent;
+            }
+
+            // program
+            const wchar_t* pSource = pDispParams->rgvarg[0].bstrVal;
+            _prog_ptr_t prog(new CProgram(pSource, &CProgram::parse_executeglobal, pProc0->m_p0), false);
+
+            size_t errline;
+            if(prog->isReady(errline)){
+                prog->bind();
+
+                // process
+                _proc_ptr_t proc(new CProcessor(*pProc0, prog));
+                proc->bind(prog);
+
+                size_t i = 0;
+                while(i < proc->m_pp->m_clo_ids.size()){
+                    _variant_t& v = pProc0->m_scope.front()[proc->m_pp->m_clo_ids[i]];
+                    if(v.vt == (VT_BYREF|VT_VARIANT)){
+                        proc->m_cdims[i] = v;
+                    }else{
+                        proc->m_cdims[i].vt = VT_BYREF | VT_VARIANT;
+                        proc->m_cdims[i].pvarVal = &v;
+                    }
+                    ++i;
+                }
+
+                if(SUCCEEDED(hr = (*proc)())){
+                    m_exec.front().push_back( proc );
                 }
             }else{
                 return E_INVALIDARG;
