@@ -104,6 +104,7 @@ typedef HRESULT (*LPFNGETCLASSOBJECT)(REFCLSID, REFIID, LPVOID *);
 extern const IID IID_NULL;
 extern const CLSID CLSID_NULL;
 
+extern const IID IID_IUnknown;
 struct IUnknown{
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void**) = 0;
     virtual ULONG STDMETHODCALLTYPE AddRef() = 0;

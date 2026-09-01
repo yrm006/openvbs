@@ -9,95 +9,7 @@
 
 
 
-// for degug
-#define DBG_IMPLEMENT_HERE(hint, hr) (fprintf(stdout, "###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, hint), hr)
-#define DBG_GUID(guid) \
-    fprintf(stdout, "###{%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",      \
-        guid.Data1, guid.Data2, guid.Data3,                                                           \
-        guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
-
-
-
-#define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
-#define DISPID_EVAL           -1
-#define DISPID_EXECUTE        -2
-#define DISPID_EXECUTEGLOBAL  -3
-#define NAME L"Jujube"
-
-enum VARENUMX{
-    VTX_NONE            = 0x00,
-    VTX_GROUND          = 0x01,
-    VTX_INST            = 0x02,
-    VTX_PROGRAM         = 0x03,
-    VTX_JSONNEW         = 0x04,
-    VTX_CLOSURE         = 0x05,
-    VTX_CLASS           = 0x06,
-    VTX_LITERAL         = 0x07,
-    VTX_SKIPTOELSE      = 0x10,
-    VTX_SKIPTOENDIF     = 0x11,
-    VTX_SKIPTOCASE      = 0x12,
-    VTX_SKIPTOENDSELECT = 0x13,
-    VTX_SKIPTOLOOP      = 0x14,
-    VTX_SKIPTONEXT      = 0x15,
-    VTX_PCFORLOOPWHILE  = 0x20,
-    VTX_PCFORLOOPUNTIL  = 0x21,
-    VTX_POFORRETURN     = 0x22,
-    VTX_PCFORRETURN     = 0x23,
-    VTX_IVFORRETURN     = 0x24,
-    VTX_PCFORNEXT       = 0x25,
-    VTX_RETURN          = 0x26,
-    VTX_PCFORLOOP       = 0x27,
-};
-
-enum DIMSCOPE{
-    DSC_PUBLIC  = 0,
-    DSC_PRIVATE = 1,
-};
-
-struct ichar_traits : public std::char_traits<wchar_t>{
-	static int compare(const wchar_t *s1, const wchar_t *s2, size_t n){
-		return _wcsnicmp(s1, s2, n);
-	}
-};
-
-template <typename T>
-class OnceAllocator{
-public:
-    typedef T value_type;
-
-    T* allocate(size_t n){
-        if(m_already){
-            throw this;
-            return nullptr;
-        }else{
-            m_already = true;
-            return (T*)::operator new(sizeof(T)*n);
-        }
-    }
-
-    void deallocate(T* p, size_t n){
-        ::operator delete(p);
-    }
-
-private:
-    bool m_already = false;
-};
-
-typedef std::basic_string<wchar_t, ichar_traits> istring;
-typedef std::map<istring, _variant_t> CExtension;
-typedef _com_ptr_t<_com_IIID<IDispatch, &IID_IDispatch> > _disp_ptr_t;
-typedef _com_ptr_t<_com_IIID<IEnumVARIANT, &IID_IEnumVARIANT> > _enum_ptr_t;
-class CProgram;
-typedef _com_ptr_t<_com_IIID<CProgram, &IID_NULL> > _prog_ptr_t;
-class CProcessor;
-typedef _com_ptr_t<_com_IIID<CProcessor, &IID_NULL> > _proc_ptr_t;
-class Error;
-typedef _com_ptr_t<_com_IIID<Error, &IID_NULL> > _err_ptr_t;
-
-struct word_t{ istring s; void* p; _variant_t v; size_t l; };
-
-
-
+//---
 class _dispparams_wrapper_t{
 private:
     DISPPARAMS* m_target;
@@ -168,6 +80,106 @@ public:
 
 
 
+typedef _com_ptr_t<_com_IIID<IUnknown,     &IID_IUnknown    > > _unkn_ptr_t;
+typedef _com_ptr_t<_com_IIID<IDispatch,    &IID_IDispatch   > > _disp_ptr_t;
+typedef _com_ptr_t<_com_IIID<IEnumVARIANT, &IID_IEnumVARIANT> > _enum_ptr_t;
+
+
+
+bool operator<(const _variant_t& l, const _variant_t& r);
+
+struct ichar_traits : public std::char_traits<wchar_t>{
+    static int compare(const wchar_t *s1, const wchar_t *s2, size_t n){
+        return _wcsnicmp(s1, s2, n);
+    }
+};
+
+typedef std::basic_string<wchar_t, ichar_traits> istring;
+
+
+
+// for degug
+#define DBG_IMPLEMENT_HERE(hint, hr) (fprintf(stdout, "###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, hint), hr)
+#define DBG_GUID(guid) \
+    fprintf(stdout, "###{%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",      \
+        guid.Data1, guid.Data2, guid.Data3,                                                           \
+        guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+
+//---//
+
+
+
+#define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
+#define DISPID_EVAL           -1
+#define DISPID_EXECUTE        -2
+#define DISPID_EXECUTEGLOBAL  -3
+#define NAME L"Jujube"
+
+enum VARENUMX{
+    VTX_NONE            = 0x00,
+    VTX_GROUND          = 0x01,
+    VTX_INST            = 0x02,
+    VTX_PROGRAM         = 0x03,
+    VTX_JSONNEW         = 0x04,
+    VTX_CLOSURE         = 0x05,
+    VTX_CLASS           = 0x06,
+    VTX_LITERAL         = 0x07,
+    VTX_SKIPTOELSE      = 0x10,
+    VTX_SKIPTOENDIF     = 0x11,
+    VTX_SKIPTOCASE      = 0x12,
+    VTX_SKIPTOENDSELECT = 0x13,
+    VTX_SKIPTOLOOP      = 0x14,
+    VTX_SKIPTONEXT      = 0x15,
+    VTX_PCFORLOOPWHILE  = 0x20,
+    VTX_PCFORLOOPUNTIL  = 0x21,
+    VTX_POFORRETURN     = 0x22,
+    VTX_PCFORRETURN     = 0x23,
+    VTX_IVFORRETURN     = 0x24,
+    VTX_PCFORNEXT       = 0x25,
+    VTX_RETURN          = 0x26,
+    VTX_PCFORLOOP       = 0x27,
+};
+
+enum DIMSCOPE{
+    DSC_PUBLIC  = 0,
+    DSC_PRIVATE = 1,
+};
+
+template <typename T>
+class OnceAllocator{
+public:
+    typedef T value_type;
+
+    T* allocate(size_t n){
+        if(m_already){
+            throw this;
+            return nullptr;
+        }else{
+            m_already = true;
+            return (T*)::operator new(sizeof(T)*n);
+        }
+    }
+
+    void deallocate(T* p, size_t n){
+        ::operator delete(p);
+    }
+
+private:
+    bool m_already = false;
+};
+
+typedef std::map<istring, _variant_t> CExtension;
+class CProgram;
+typedef _com_ptr_t<_com_IIID<CProgram, &IID_NULL> > _prog_ptr_t;
+class CProcessor;
+typedef _com_ptr_t<_com_IIID<CProcessor, &IID_NULL> > _proc_ptr_t;
+class Error;
+typedef _com_ptr_t<_com_IIID<Error, &IID_NULL> > _err_ptr_t;
+
+struct word_t{ istring s; void* p; _variant_t v; size_t l; };
+
+
+
 class JSONObjectEnum : public IEnumVARIANT{
 private:
     ULONG       m_refc   = 1;
@@ -181,11 +193,11 @@ public:
         : m_hold(p)
         , m_r(r)
     {
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
         m_i = m_r.begin();
     }
     virtual ~JSONObjectEnum(){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
     }
 
 public:
@@ -231,11 +243,11 @@ public:
 public:
     JSONObject(){}
     JSONObject(const wchar_t* json){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
         from(json);
     }
     virtual ~JSONObject(){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
     };
 
 public:
@@ -380,11 +392,11 @@ public:
         : m_hold(p)
         , m_r(r)
     {
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
         m_i = m_r.begin();
     }
     virtual ~JSONArrayEnum(){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
     }
 
 public:
@@ -436,11 +448,11 @@ public:
 public:
     JSONArray(){}
     JSONArray(const wchar_t* json){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
         from(json);
     }
     virtual ~JSONArray(){
-//printf("###%s\n", __func__);
+//wprintf(L"###%hs\n", __func__);
     };
 
 public:
@@ -6448,7 +6460,7 @@ public:
         m_s.reserve(size*8);
 
         bind(m_pp);
-// wprintf(L"$$$%s\n", __func__);
+//wprintf(L"$$$%hs\n", __func__);
     }
 
     CProcessor(CProcessor& parent, CProgram* pp)
@@ -6491,7 +6503,7 @@ public:
             _variant_t res;
             _com_util::CheckError( this->Invoke(did, IID_NULL, 0, DISPATCH_METHOD, &param, &res, nullptr, nullptr) );
         }
-// wprintf(L"$$$%s-child\n", __func__);
+//wprintf(L"$$$%hs-child\n", __func__);
     }
 
     CProcessor(CProcessor& source)
@@ -6526,7 +6538,7 @@ public:
         m_exec.push_back( {} );
 
         m_s.reserve(source.m_s.capacity());
-// wprintf(L"$$$%s-copy\n", __func__);
+//wprintf(L"$$$%hs-copy\n", __func__);
     }
 
     virtual ~CProcessor(){
@@ -6537,7 +6549,7 @@ public:
             _variant_t res;
             _com_util::CheckError( this->Invoke(did, IID_NULL, 0, DISPATCH_METHOD, &param, &res, nullptr, nullptr) );
         }
-// wprintf(L"$$$%s%ls\n", __func__, m_parent?L"-child":L"");
+//wprintf(L"$$$%hs%s\n", __func__, m_parent?L"-child":L"");
     }
 
     void dump(){

@@ -2208,57 +2208,49 @@ public:
     HRESULT vbDateDiff(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbDatePart(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbDateSerial(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbDateValue(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbTimeSerial(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbTimeValue(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbFormatCurrency(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbFormatDateTime(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbFormatNumber(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
@@ -2314,8 +2306,7 @@ wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
     HRESULT vbFormatPercent(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-        return E_NOTIMPL;
+        return DBG_IMPLEMENT_HERE(L"", E_NOTIMPL);
     }
 
     HRESULT vbTimer(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 

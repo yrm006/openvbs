@@ -17,9 +17,17 @@
 
 const CLSID CLSID_NULL      = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
 const IID IID_NULL          = {0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}};
+const IID IID_IUnknown      = {0x00000000,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
 const IID IID_IClassFactory = {0x00000001,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
 const IID IID_IDispatch     = {0x00020400,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
 const IID IID_IEnumVARIANT  = {0x00020404,0x0000,0x0000,{0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
+
+// for degug
+#define DBG_IMPLEMENT_HERE(hint, hr) (fprintf(stdout, "###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LINE__, hint), hr)
+#define DBG_GUID(guid) \
+    fprintf(stdout, "###{%08X-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}\n",      \
+        guid.Data1, guid.Data2, guid.Data3,                                                           \
+        guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
 
 
 
@@ -98,8 +106,7 @@ HRESULT CLSIDFromProgID(LPCOLESTR lpszProgID, LPCLSID lpclsid){
 }
 
 HRESULT CLSIDFromString(LPCOLESTR lpsz, LPCLSID pclsid){
-wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
-    return E_NOTIMPL;
+    return DBG_IMPLEMENT_HERE(lpsz, E_NOTIMPL);
 }
 
 HRESULT CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv){
@@ -161,8 +168,8 @@ HRESULT VarNot(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->boolVal = ~pvarIn->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
-        return E_NOTIMPL;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d", pvarIn->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -177,8 +184,8 @@ HRESULT VarAnd(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->boolVal = pvarLeft->boolVal & pvarRight->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarLeft->vt, pvarRight->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -193,8 +200,8 @@ HRESULT VarOr(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->boolVal = pvarLeft->boolVal | pvarRight->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarLeft->vt, pvarRight->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -209,8 +216,8 @@ HRESULT VarXor(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         pvarResult->boolVal = pvarLeft->boolVal ^ pvarRight->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarLeft->vt, pvarRight->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -296,8 +303,8 @@ HRESULT VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, ULONG dwFlags
         return VARCMP_EQ;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-        return E_NOTIMPL;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarLeft->vt, pvarRight->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 }
 
@@ -322,8 +329,8 @@ HRESULT VarRound(LPVARIANT pvarIn, int cDecimals, LPVARIANT pvarResult){
         pvarResult->dblVal = dbl;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
-        return E_INVALIDARG;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d", pvarIn->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -344,8 +351,8 @@ HRESULT VarInt(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->llVal = pvarIn->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
-        return E_INVALIDARG;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d", pvarIn->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -361,8 +368,8 @@ HRESULT VarFix(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->llVal = pvarIn->llVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
-        return E_INVALIDARG;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d", pvarIn->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -382,8 +389,8 @@ HRESULT VarAbs(LPVARIANT pvarIn, LPVARIANT pvarResult){
         pvarResult->llVal = (pvarIn->boolVal < 0) ? -pvarIn->boolVal : pvarIn->boolVal;
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d)\n", __func__, __FILE__, __LINE__, pvarIn->vt);
-        return E_INVALIDARG;
+        wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d", pvarIn->vt);
+        return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     return S_OK;
@@ -709,8 +716,8 @@ HRESULT VarCat(LPVARIANT pvarLeft, LPVARIANT pvarRight, LPVARIANT pvarResult){
         return S_OK;
     }
 
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarLeft->vt, pvarRight->vt);
-    return E_NOTIMPL;
+    wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarLeft->vt, pvarRight->vt);
+    return DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
 }
 
 HRESULT VarDateFromStr(LPCOLESTR strIn, LCID lcid, ULONG dwFlags, DATE *pdateOut){
@@ -835,8 +842,8 @@ HRESULT VariantChangeType(VARIANT *pvargDest, const VARIANT *pvarSrc, USHORT wFl
             hr = SUCCEEDED(hr) ? VariantChangeType(pvargDest, &v, wFlags, vt) : hr;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_BOOL){
@@ -866,8 +873,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             }
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_R8){
@@ -898,8 +905,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             }
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_I8){
@@ -938,8 +945,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->llVal = pvarSrc->boolVal;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_I4){
@@ -966,8 +973,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->lVal = pvarSrc->llVal;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_I2){
@@ -1002,8 +1009,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->iVal = pvarSrc->boolVal;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_UI1){
@@ -1016,8 +1023,8 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             pvargDest->bVal = pvarSrc->llVal;
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     if(vt == VT_DATE){
@@ -1043,13 +1050,13 @@ wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__
             }
         }else
         {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-            return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
         }
     }else
     {
-wprintf(L"###%s: Implement here '%s' line %d. (vt:%d->%d)\n", __func__, __FILE__, __LINE__, pvarSrc->vt, vt);
-        return E_INVALIDARG;
+            wchar_t dbg[32]; swprintf(dbg, 32, L"vt:%d->%d", pvarSrc->vt, vt);
+            hr = DBG_IMPLEMENT_HERE(dbg, E_INVALIDARG);
     }
 
     if(SUCCEEDED(hr) && pvargDest == &bufDest){
