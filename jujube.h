@@ -110,9 +110,10 @@ typedef std::basic_string<wchar_t, ichar_traits> istring;
 
 
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
-#define DISPID_EVAL           -1
-#define DISPID_EXECUTE        -2
-#define DISPID_EXECUTEGLOBAL  -3
+#define DISPID_EVAL           1
+#define DISPID_EXECUTE        2
+#define DISPID_EXECUTEGLOBAL  3
+#define DISPID_FORDYNAMICDISP 4
 #define NAME L"Jujube"
 
 enum VARENUMX{
@@ -6994,8 +6995,8 @@ public:
         }
 
         if(pvDispatching || pfDispatching || ppDispatching){
+            *rgDispId = m_disp.size() + DISPID_FORDYNAMICDISP;
             m_disp.push_back( {pvDispatching, pfDispatching, ppDispatching} );
-            *rgDispId = m_disp.size();
             m_disp_names[*rgszNames] = *rgDispId;
 
             return S_OK;
@@ -7059,15 +7060,19 @@ public:
                 }
 
                 if(SUCCEEDED(hr = oProcessor())){
-                    VARIANT* pv = &oProcessor.m_s.back();
-                    if(pv->vt == (VT_BYREF|VT_VARIANT)){
-                        VariantCopy(pVarResult, pv->pvarVal);   // *copy* because oProcessor will be dead soon
-                    }else{
-                        *pVarResult = oProcessor.m_s.back().Detach();
-                    }
-                    oProcessor.m_s.pop_back();
+                    if(oProcessor.m_s.size()){
+                        VARIANT* pv = &oProcessor.m_s.back();
+                        if(pv->vt == (VT_BYREF|VT_VARIANT)){
+                            VariantCopy(pVarResult, pv->pvarVal);   // *copy* because oProcessor will be dead soon
+                        }else{
+                            *pVarResult = oProcessor.m_s.back().Detach();
+                        }
+                        oProcessor.m_s.pop_back();
 
-                    oProcessor.m_s.pop_back();   // VTX_GROUND
+                        oProcessor.m_s.pop_back();   // VTX_GROUND
+                    }else{
+                        return E_FAIL;
+                    }
                 }
             }else{
                 return E_INVALIDARG;
@@ -7143,7 +7148,7 @@ public:
             }
         }else
         {
-            dispatch_t& disp = m_disp[dispIdMember-1];
+            dispatch_t& disp = m_disp[dispIdMember-DISPID_FORDYNAMICDISP];
             if(disp.pv){
                 if(wFlags == DISPATCH_PROPERTYPUT){
                     hr = VariantCopy(disp.pv, pDispParams->rgvarg);
