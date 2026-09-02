@@ -1740,6 +1740,10 @@ private:
             while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
             ++m_lines;
         }else
+        if(            _wcsnicmp(L"rem　", c, 4) == 0){ // for Japanese-style SPACE after 'rem' keyword
+            while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
+            ++m_lines;
+        }else
         if(*c==L'@' && (m_code.back().p == map_word(istring(L":")) || m_code.back().p == map_word(istring(L"\n")))){
             istring s(c, len);
             m_labels[s] = m_code.size()-1;
@@ -2185,7 +2189,7 @@ public:
                 while(!( 
                     *c==L'=' || *c==L'+' || *c==L'-' || *c==L':' ||
                     *c==L'.' || *c==L',' || *c==L'(' || *c==L')' ||
-                    *c==L'\n'|| *c==L'&' ||
+                    *c==L'\t'|| *c==L'\n'|| *c==L'&' ||
                     *c==L'^' || *c==L'*' || *c==L'/' || *c==L'<' || *c==L'>' ||
                     *c==L'?' ||
                     *c==L' ' || *c==L'\''|| *c==L'"' || *c==L'#' ||
