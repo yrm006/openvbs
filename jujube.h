@@ -7092,7 +7092,7 @@ public:
                 prog->bind();
 
                 // process
-                _proc_ptr_t proc(new CProcessor(*this, prog));
+                _proc_ptr_t proc(new CProcessor(*this, prog), false);
                 proc->bind(prog);
 
                 size_t i = 0;
@@ -7129,7 +7129,7 @@ public:
                 prog->bind();
 
                 // process
-                _proc_ptr_t proc(new CProcessor(*pProc0, prog));
+                _proc_ptr_t proc(new CProcessor(*pProc0, prog), false);
                 proc->bind(prog);
 
                 size_t i = 0;
