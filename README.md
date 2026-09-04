@@ -70,6 +70,14 @@ Bingo Machine:
     $ ./oscript sample.obs
     $ echo "wscript.echo 123" | ./oscript
 
+[Interactive Mode]
+
+    $ ./oscript -i
+    oscript| dim msg="hello"
+    oscript| wscript.echo msg
+    hello
+    oscript| 
+
 [more...](https://github.com/yrm006/openvbs/blob/master/readme.txt)
 
 ## Licence
