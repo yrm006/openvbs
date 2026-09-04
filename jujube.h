@@ -6000,6 +6000,40 @@ private:
         return true;
     }
 
+    bool word_ctxdisp(word_t& pc){
+        {
+            _variant_t v;
+            v.vt = VT_DISPATCH;
+            (v.pdispVal = m_parent)->AddRef();
+            m_s.push_back( v );
+        }
+        {
+            m_s.push_back( pc.v );
+        }
+        {
+            _variant_t v;
+            v.wReserved1 = VTX_INST;
+            v.byref = (void*)&s_insts[INST_op_invoke];
+            m_s.push_back( v );
+        }
+
+        if( *((word_m*)(&pc+1)->p) != &CProcessor::word_parenL ){
+            int ni = 0;{
+                auto i = m_s.rbegin();
+                while(!( i->wReserved1 == VTX_GROUND )){
+                    if(i->wReserved1 == VTX_INST) ++ni;
+                    ++i;
+                }
+            }
+
+            if(1 < ni){
+                do_left_invoke();
+            }
+        }
+
+        return true;
+    }
+
     bool word_env(word_t& pc){
         {
             _variant_t v((IDispatch*)m_env);
@@ -6381,7 +6415,14 @@ public:
                             i->p = map_word(L"@literal");
                             m_env->Invoke(id, IID_NULL, 0, 0, nullptr, &i->v, nullptr, nullptr);
                         }
-                    }else{
+                    }else
+                    if(m_parent && SUCCEEDED(hr = m_parent->GetIDsOfNames(IID_NULL, &name, 1, 0, &id))){
+                        i->p = map_word(L"@ctxdisp");
+
+                        i->v.vt = VT_I4;
+                        i->v.lVal = id;
+                    }else
+                    {
                         // none: unknown word
                     }
                 }
@@ -6597,6 +6638,16 @@ public:
             }
         }
         wprintf(L"***%s       //\n", __func__);
+    }
+
+    HRESULT operator+=(CProgram* prog){
+        // process
+        _proc_ptr_t proc(new CProcessor(*this, prog), false);
+        proc->bind(prog);
+
+        m_exec.back().push_back( proc );
+
+        return (*proc)();
     }
 
     HRESULT operator()(CProgram& prog, VARIANT args[], int argn){
@@ -6951,6 +7002,8 @@ private:
         _variant_t* pv;   // dim
         CProgram*   pf;   // function/get
         CProgram*   pp;   // property let/set
+        CProcessor* pr;   // exec processor
+        DISPID      id;   // exec dispid
     };
 
     std::vector<dispatch_t>   m_disp;
@@ -6994,11 +7047,23 @@ public:
         }
 
         if(pvDispatching || pfDispatching || ppDispatching){
-            m_disp.push_back( {pvDispatching, pfDispatching, ppDispatching} );
+            m_disp.push_back( {pvDispatching, pfDispatching, ppDispatching, nullptr, 0} );
             *rgDispId = m_disp.size();
             m_disp_names[*rgszNames] = *rgDispId;
 
             return S_OK;
+        }
+
+        auto i = m_exec.front().begin();
+        while(i != m_exec.front().end()){
+            if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId))){
+                m_disp.push_back( {nullptr, nullptr, nullptr, *i, *rgDispId} );
+                *rgDispId = m_disp.size();
+                m_disp_names[*rgszNames] = *rgDispId;
+
+                return S_OK;
+            }
+            ++i;
         }
 
         return DISP_E_UNKNOWNNAME;
@@ -7144,6 +7209,9 @@ public:
         }else
         {
             dispatch_t& disp = m_disp[dispIdMember-1];
+            if(disp.pr){
+                hr = disp.pr->Invoke(disp.id, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+            }else
             if(disp.pv){
                 if(wFlags == DISPATCH_PROPERTYPUT){
                     hr = VariantCopy(disp.pv, pDispParams->rgvarg);

@@ -2910,6 +2910,62 @@ int removeCR(char aBuf[]){
 
 
 
+int interact(){
+    #define LINE_SIZE 0x400
+    wchar_t aSource[LINE_SIZE+1] = L"";
+    const wchar_t* pSource = aSource;
+
+
+
+    // run
+    HRESULT hr = E_FAIL;    
+    CoInitializeEx(0, COINIT_APARTMENTTHREADED);
+    {
+        VBScript oVBScript;
+        WScript  oWScript;
+
+        CExtension oExt = {
+            { L"wscript", (IDispatch*)&oWScript },
+        };
+
+        CProgram oProgram(pSource);
+
+        CProcessor oProcessor(&oProgram, &oVBScript, &oExt);
+        oVBScript.m_pProcessor = &oProcessor;
+
+        hr = oProcessor();
+
+        while(SUCCEEDED(hr)){
+            printf("oscript| ");
+
+            char aBuf[LINE_SIZE+1];{
+                aBuf[LINE_SIZE] = 0xff;
+                if(!fgets(aBuf, LINE_SIZE+1, stdin)) break;
+            }
+
+            // check size
+            if(!aBuf[LINE_SIZE]){ fwprintf(stderr, L"!Max line size is %zd byte.\n", sizeof(aBuf)-1); continue; };
+
+            removeCR(aBuf);
+            if(!utf8_wchar(aSource, sizeof(aSource)/sizeof(aSource[0]), aBuf)){ fwprintf(stderr, L"!Need UTF8 format.\n"); return -1; }
+
+            pSource = aSource;
+
+            _prog_ptr_t prog(new CProgram(pSource), false);
+            hr = (oProcessor += prog);
+        }
+
+        if(FAILED(hr)){
+            fwprintf(stderr, L"![0x%x]%ls in line:%d\n", hr, oProcessor.m_err->bstrDescription, oProcessor.m_err->dwHelpContext);
+        }
+    }
+    CoUninitialize();
+
+    return SUCCEEDED(hr) ? 0 : 1;
+}
+
+
+
 int main(int argn, const char* argc[]){
 #ifdef _WIN32
     setlocale(LC_ALL, ".65001");
@@ -2925,6 +2981,10 @@ int main(int argn, const char* argc[]){
         setenv("REGISTRY", buf, 0);
     }
 #endif
+
+    if(argn == 2 && strcmp(argc[1], "-i") == 0){
+        return interact();
+    }
 
     #define MAX_SIZE 0x8000
     wchar_t aSource[MAX_SIZE+1];

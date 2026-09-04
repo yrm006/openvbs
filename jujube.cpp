@@ -378,6 +378,7 @@ const std::map<istring, CProcessor::word_m> CProcessor::s_words = {
     {L"@cdim",         &CProcessor::word_cdim},
     {L"@closure",      &CProcessor::word_closure},
     {L"@extdisp",      &CProcessor::word_extdisp},
+    {L"@ctxdisp",      &CProcessor::word_ctxdisp},
     {L"@noop",         &CProcessor::word_noop},
     {L"@func",         &CProcessor::word_func},
     {L"@class",        &CProcessor::word_class},
