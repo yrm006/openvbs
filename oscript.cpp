@@ -3063,6 +3063,12 @@ int main(int argn, const char* argc[]){
 
     CProgram oProgram(pSource);
 
+    size_t errline;
+    if(!oProgram.isReady(errline)){
+        fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+        return E_FAIL;
+    }
+
     HRESULT hr = S_OK;    
     CoInitializeEx(0, COINIT_APARTMENTTHREADED);
     {

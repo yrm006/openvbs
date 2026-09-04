@@ -2931,13 +2931,13 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 
         size_t errline;
         if(!prog->isReady(errline)){
-            //fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+            fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
             hr = E_FAIL;
         }else
         if(m_pPrcs){
             hr = (*m_pPrcs += prog);
         }else{
-            m_pPrcs = new CProcessor(prog, (IDispatch*)&m_oVBScript, &m_oExt);
+            m_pPrcs = new CProcessor(prog, &m_vbs, &m_ext);
             m_vbs.m_pProcessor = m_pPrcs;
             hr = S_OK;
         }
