@@ -6641,6 +6641,10 @@ public:
     }
 
     HRESULT operator+=(CProgram* prog){
+        if(m_pc == 0){
+            return E_FAIL;
+        }
+
         // process
         _proc_ptr_t proc(new CProcessor(*this, prog), false);
         proc->bind(prog);

@@ -2855,7 +2855,6 @@ private:
 
 	VBScript	m_vbs;
 	CExtension	m_ext;
-	CProgram*   m_pProg = nullptr;
     CProcessor* m_pPrcs = nullptr;
 
 public:
@@ -2865,7 +2864,6 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
     ~OBScript(){
 fprintf(flog, "%s\n", __func__); fflush(flog);
         if(m_pPrcs) delete m_pPrcs;
-		if(m_pProg) delete m_pProg;
     }
 
 // IActiveScriptParse
@@ -2912,6 +2910,8 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		/* [out] */ __RPC__out EXCEPINFO *pexcepinfo
 	){
 fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
+        HRESULT hr = E_FAIL;
+
         wchar_t* buf = (wchar_t*)malloc( sizeof(wchar_t) * (wcslen(pstrCode)+1) );
 
         int i=0, j=0;
@@ -2927,17 +2927,24 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 
         const wchar_t* code = buf;
 
-		if(m_pProg) delete m_pProg;
-		m_pProg = new CProgram(code);
-        if(m_pPrcs) delete m_pPrcs;
-        m_pPrcs = new CProcessor(m_pProg, &m_vbs, &m_ext);
+        _prog_ptr_t prog(new CProgram(code), false);
 
-        // for Eval
-        m_vbs.m_pProcessor = m_pPrcs;
+        size_t errline;
+        if(!prog->isReady(errline)){
+            //fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+            hr = E_FAIL;
+        }else
+        if(m_pPrcs){
+            hr = (*m_pPrcs += prog);
+        }else{
+            m_pPrcs = new CProcessor(prog, (IDispatch*)&m_oVBScript, &m_oExt);
+            m_vbs.m_pProcessor = m_pPrcs;
+            hr = S_OK;
+        }
 
         free(buf);
 
-		return S_OK;
+		return hr;
 	}
 
 // IActiveScript
@@ -3028,7 +3035,6 @@ return S_OK;
 fprintf(flog, "%s\n", __func__); fflush(flog);
 		m_pSite->Release(); m_pSite = nullptr;
         if(m_pPrcs){ delete m_pPrcs; m_pPrcs = nullptr; }
-		if(m_pProg){ delete m_pProg; m_pProg = nullptr; }
 		return S_OK;
 	}
 	

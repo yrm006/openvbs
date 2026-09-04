@@ -2952,6 +2952,13 @@ int interact(){
             pSource = aSource;
 
             _prog_ptr_t prog(new CProgram(pSource), false);
+
+            size_t errline;
+            if(!prog->isReady(errline)){
+                fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+                return E_FAIL;
+            }
+
             hr = (oProcessor += prog);
         }
 
