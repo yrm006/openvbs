@@ -110,9 +110,10 @@ typedef std::basic_string<wchar_t, ichar_traits> istring;
 
 
 #define DISPID_GETIMMEDIATELY DISPID_UNKNOWN
-#define DISPID_EVAL           -1
-#define DISPID_EXECUTE        -2
-#define DISPID_EXECUTEGLOBAL  -3
+#define DISPID_EVAL           1
+#define DISPID_EXECUTE        2
+#define DISPID_EXECUTEGLOBAL  3
+#define DISPID_FORDYNAMICDISP 4
 #define NAME L"Jujube"
 
 enum VARENUMX{
@@ -1739,6 +1740,10 @@ private:
             while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
             ++m_lines;
         }else
+        if(            _wcsnicmp(L"rem　", c, 4) == 0){ // for Japanese-style SPACE after 'rem' keyword
+            while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
+            ++m_lines;
+        }else
         if(*c==L'@' && (m_code.back().p == map_word(istring(L":")) || m_code.back().p == map_word(istring(L"\n")))){
             istring s(c, len);
             m_labels[s] = m_code.size()-1;
@@ -2184,7 +2189,7 @@ public:
                 while(!( 
                     *c==L'=' || *c==L'+' || *c==L'-' || *c==L':' ||
                     *c==L'.' || *c==L',' || *c==L'(' || *c==L')' ||
-                    *c==L'\n'|| *c==L'&' ||
+                    *c==L'\t'|| *c==L'\n'|| *c==L'&' ||
                     *c==L'^' || *c==L'*' || *c==L'/' || *c==L'<' || *c==L'>' ||
                     *c==L'?' ||
                     *c==L' ' || *c==L'\''|| *c==L'"' || *c==L'#' ||
@@ -7051,8 +7056,8 @@ public:
         }
 
         if(pvDispatching || pfDispatching || ppDispatching){
+            *rgDispId = m_disp.size() + DISPID_FORDYNAMICDISP;
             m_disp.push_back( {pvDispatching, pfDispatching, ppDispatching, nullptr, 0} );
-            *rgDispId = m_disp.size();
             m_disp_names[*rgszNames] = *rgDispId;
 
             return S_OK;
@@ -7128,15 +7133,19 @@ public:
                 }
 
                 if(SUCCEEDED(hr = oProcessor())){
-                    VARIANT* pv = &oProcessor.m_s.back();
-                    if(pv->vt == (VT_BYREF|VT_VARIANT)){
-                        VariantCopy(pVarResult, pv->pvarVal);   // *copy* because oProcessor will be dead soon
-                    }else{
-                        *pVarResult = oProcessor.m_s.back().Detach();
-                    }
-                    oProcessor.m_s.pop_back();
+                    if(oProcessor.m_s.size()){
+                        VARIANT* pv = &oProcessor.m_s.back();
+                        if(pv->vt == (VT_BYREF|VT_VARIANT)){
+                            VariantCopy(pVarResult, pv->pvarVal);   // *copy* because oProcessor will be dead soon
+                        }else{
+                            *pVarResult = oProcessor.m_s.back().Detach();
+                        }
+                        oProcessor.m_s.pop_back();
 
-                    oProcessor.m_s.pop_back();   // VTX_GROUND
+                        oProcessor.m_s.pop_back();   // VTX_GROUND
+                    }else{
+                        return E_FAIL;
+                    }
                 }
             }else{
                 return E_INVALIDARG;
@@ -7152,7 +7161,7 @@ public:
                 prog->bind();
 
                 // process
-                _proc_ptr_t proc(new CProcessor(*this, prog));
+                _proc_ptr_t proc(new CProcessor(*this, prog), false);
                 proc->bind(prog);
 
                 size_t i = 0;
@@ -7189,7 +7198,7 @@ public:
                 prog->bind();
 
                 // process
-                _proc_ptr_t proc(new CProcessor(*pProc0, prog));
+                _proc_ptr_t proc(new CProcessor(*pProc0, prog), false);
                 proc->bind(prog);
 
                 size_t i = 0;
@@ -7212,7 +7221,7 @@ public:
             }
         }else
         {
-            dispatch_t& disp = m_disp[dispIdMember-1];
+            dispatch_t& disp = m_disp[dispIdMember-DISPID_FORDYNAMICDISP];
             if(disp.pr){
                 hr = disp.pr->Invoke(disp.id, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
             }else
