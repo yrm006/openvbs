@@ -7066,8 +7066,8 @@ public:
         auto i = m_exec.front().begin();
         while(i != m_exec.front().end()){
             if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId))){
+                *rgDispId = m_disp.size() + DISPID_FORDYNAMICDISP;
                 m_disp.push_back( {nullptr, nullptr, nullptr, *i, *rgDispId} );
-                *rgDispId = m_disp.size();
                 m_disp_names[*rgszNames] = *rgDispId;
 
                 return S_OK;
