@@ -1740,7 +1740,23 @@ private:
             while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
             ++m_lines;
         }else
-        if(            _wcsnicmp(L"rem　", c, 4) == 0){ // for Japanese-style SPACE after 'rem' keyword
+        if(3 < len && _wcsnicmp(L"rem", c, 3) == 0 && !( (L'A' <= c[3] && c[3] <= L'Z') || (L'a' <= c[3] && c[3] <= L'z') || (L'0' <= c[3] && c[3] <= L'9') || c[3] == L'_' )){
+            //
+            // VBScript compatibility:
+            //
+            // Although Microsoft's documentation says that a space is required
+            // after "Rem", vbscript.dll recognizes Rem as a comment when the
+            // following character is not an ASCII identifier character
+            // [A-Za-z0-9_].
+            //
+            // Examples:
+            //   RemABC   -> identifier / not a comment
+            //   Rem_ABC  -> identifier / not a comment
+            //   Rem123   -> identifier / not a comment
+            //   Remあ    -> comment
+            //   Remé     -> comment
+            //   Rem!     -> comment
+            ///
             while(!( *(c+len)==L'\n' || *(c+len)==L'\0' )) ++len;
             ++m_lines;
         }else
