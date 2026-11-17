@@ -55,9 +55,18 @@ bool JSONObject::from(const wchar_t* c){
                     }else
                     if(*c == L'u'){
                         ++c;
-                        wchar_t* pend;
-                        s += (wchar_t)wcstoll(c, &pend, 10);
-                        c = pend;
+                        uint32_t uc = 0;
+                        int n = 0;
+                        while(n < 4 && *c){
+                            if(L'0' <=*c&&*c<= L'9') uc = (uc<<4) | (uint32_t)(*c - L'0');
+                            else
+                            if(L'a' <=*c&&*c<= L'f') uc = (uc<<4) | (uint32_t)(*c - L'a' + 10);
+                            else
+                            if(L'A' <=*c&&*c<= L'F') uc = (uc<<4) | (uint32_t)(*c - L'A' + 10);
+                            else break;
+                            ++c; ++n;
+                        }
+                        s += (wchar_t)uc;
                     }else{
                         s += *c;
                         ++c;
@@ -190,9 +199,18 @@ bool JSONArray::from(const wchar_t* c){
                     }else
                     if(*c == L'u'){
                         ++c;
-                        wchar_t* pend;
-                        s += (wchar_t)wcstoll(c, &pend, 10);
-                        c = pend;
+                        uint32_t uc = 0;
+                        int n = 0;
+                        while(n < 4 && *c){
+                            if(L'0' <=*c&&*c<= L'9') uc = (uc<<4) | (uint32_t)(*c - L'0');
+                            else
+                            if(L'a' <=*c&&*c<= L'f') uc = (uc<<4) | (uint32_t)(*c - L'a' + 10);
+                            else
+                            if(L'A' <=*c&&*c<= L'F') uc = (uc<<4) | (uint32_t)(*c - L'A' + 10);
+                            else break;
+                            ++c; ++n;
+                        }
+                        s += (wchar_t)uc;
                     }else{
                         s += *c;
                         ++c;

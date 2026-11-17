@@ -4,21 +4,25 @@
 
 class CFactory : public IClassFactory{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     CLSID       m_clsid = {0x3F4DACA4,0x160D,0x11D2,{0xA8,0xE9,0x00,0x10,0x4B,0x36,0x5C,0x9F}}; // VBScript.RegExp
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
         return CoCreateInstance(m_clsid, nullptr, CLSCTX_INPROC_SERVER, IID_IDispatch, ppvObject);
     }
     
     HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock){
-        m_refc += fLock ? 1 : -1;
+        if(fLock){
+            InterlockedIncrement(&m_refc);
+        }else{
+            InterlockedDecrement(&m_refc);
+        }
         return S_OK;
     }
 } g_oFactory;

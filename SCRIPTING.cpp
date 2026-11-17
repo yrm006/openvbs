@@ -6,7 +6,7 @@
 
 class DictionaryEnum : public IEnumVARIANT{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     const std::map<_variant_t, _variant_t>& m_r;
     std::map<_variant_t, _variant_t>::const_iterator m_i;
@@ -30,8 +30,8 @@ public:
 
         return S_OK;
     }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched){
         ULONG i = 0;
@@ -54,7 +54,7 @@ public:
 
 class Dictionary : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     std::map<_variant_t, _variant_t> m_map;
@@ -65,8 +65,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -130,7 +130,7 @@ wprintf(L"###%s: Implement here '%s' line %d.\n", __func__, __FILE__, __LINE__);
 
 class CFactory : public IClassFactory{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     CFactory(){}
@@ -138,8 +138,8 @@ public:
 
 public:
     HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
         *ppvObject = new Dictionary;
@@ -147,7 +147,11 @@ public:
     }
     
     HRESULT LockServer(BOOL fLock){
-        m_refc += fLock ? 1 : -1;
+        if(fLock){
+            InterlockedIncrement(&m_refc);
+        }else{
+            InterlockedDecrement(&m_refc);
+        }
         return S_OK;
     }
 } g_oFactory;

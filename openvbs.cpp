@@ -1,5 +1,5 @@
 #include <windows.h>
-#include <ActivScp.h>
+#include <activscp.h>
 #include <stdio.h>
 
 #include "jujube.h"
@@ -8,7 +8,8 @@
 #include <locale.h>
 #include <stdlib.h>
 
-FILE* flog = stdin; //'stdin' to dispose the debug message
+//#define DEBUG(...) fprintf(stderr, __VA_ARGS__);fflush(stderr);
+#define DEBUG(...) 
 
 
 
@@ -20,7 +21,12 @@ FILE* flog = stdin; //'stdin' to dispose the debug message
 
 class ActiveScriptError : public EXCEPINFO, public IActiveScriptError{
 private:
-    ULONG   m_refc = 1;
+    volatile LONG   m_refc = 1;
+
+public:
+	ULONG   ulLineNumber;
+	LONG    lCharacterPosition;
+	BSTR    bstrSourceLine;
 
 public:
     ActiveScriptError(const EXCEPINFO& r){
@@ -33,18 +39,45 @@ public:
         pvReserved = nullptr;
         pfnDeferredFillIn = nullptr;
         scode = r.scode;
+
+		ulLineNumber = 0;
+		lCharacterPosition = -1;
+		bstrSourceLine = nullptr;
     }
+	ActiveScriptError(
+		LPCWSTR	pSource_,
+		LPCWSTR pDescription_,
+		SCODE	scode_,
+		ULONG   ulLineNumber_,
+		LONG    lCharacterPosition_,
+		LPCWSTR pSourceLine_
+	){
+        wCode = 0;
+        wReserved = 0;
+        bstrSource = SysAllocString(pSource_);
+        bstrDescription = SysAllocString(pDescription_);
+        bstrHelpFile = nullptr;
+        dwHelpContext = 0;
+        pvReserved = nullptr;
+        pfnDeferredFillIn = nullptr;
+        scode = scode_;
+
+		ulLineNumber = ulLineNumber_;
+		lCharacterPosition = lCharacterPosition_;
+		bstrSourceLine = SysAllocString(pSourceLine_);
+	}
     virtual ~ActiveScriptError(){
         SysFreeString(bstrSource);
         SysFreeString(bstrDescription);
         SysFreeString(bstrHelpFile);
+        SysFreeString(bstrSourceLine);
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
         return E_NOTIMPL;
     }
-    ULONG STDMETHODCALLTYPE AddRef() { return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release() { if (!--m_refc) { delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetExceptionInfo(
         /* [out] */ EXCEPINFO* pexcepinfo)
@@ -67,15 +100,15 @@ public:
         /* [out] */ __RPC__out LONG* plCharacterPosition)
     {
         *pdwSourceContext = 0;
-        *pulLineNumber = dwHelpContext;
-        *plCharacterPosition = 0;
+        *pulLineNumber = ulLineNumber;
+        *plCharacterPosition = lCharacterPosition;
         return S_OK;
     }
 
     virtual HRESULT STDMETHODCALLTYPE GetSourceLineText(
         /* [out] */ __RPC__deref_out_opt BSTR* pbstrSourceLine)
     {
-        *pbstrSourceLine = SysAllocString(L"");
+        *pbstrSourceLine = SysAllocString(bstrSourceLine);
         return S_OK;
     }
 };
@@ -93,7 +126,7 @@ public:
     typedef HRESULT (VBScript::*invoke_t)(DISPID, REFIID, LCID, WORD, DISPPARAMS*, VARIANT*, EXCEPINFO*, UINT*);
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     static std::vector<invoke_t>     s_invokes;
     static int                       s_disps_n;
@@ -101,16 +134,19 @@ private:
     static std::vector<_variant_t>   s_disps;
 
     std::mt19937_64 m_rnd;
-    double          m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
+    double          m_rnd_last;
 
     std::vector<_com_ptr_t<_com_IIID<IClassFactory, &IID_IClassFactory> > > m_cfs;
 
 public:
     VBScript(){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
+        std::random_device rd;
+        m_rnd.seed(rd());
+        m_rnd_last = (m_rnd()>>11) / 9007199254740992.0;
     }
     virtual ~VBScript(){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
     }
 
 public:
@@ -118,8 +154,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -1801,17 +1837,21 @@ public:
             int lt = SysStringLen(tgt);
             int e = SysStringLen(src)-lt;
             int s = 0;
-            int i = s;
-            while( i <= e ){
-                if(n && cmp(src+i, tgt, lt) == 0){
-                    rv.push_back( SysAllocStringLen(src+s, i-s) );
-                    s = i + lt;
-                    i = s;
-                    n -= (n < 0) ? 0 : 1;
-                }else{
-                    i += 1;
-                }
-            }
+			int i = s;
+			if(0 < lt){
+				while( i <= e ){
+					if(n && cmp(src+i, tgt, lt) == 0){
+						rv.push_back( SysAllocStringLen(src+s, i-s) );
+						s = i + lt;
+						i = s;
+						n -= (n < 0) ? 0 : 1;
+					}else{
+						i += 1;
+					}
+				}
+			}else{
+				i = e + 1;
+			}
             rv.push_back( SysAllocStringLen(src+s, i-s) );
         }
 
@@ -2409,148 +2449,148 @@ public:
     }
 };
 
-int VBScript::s_disps_n = 0;
 std::map<istring, DISPID> VBScript::s_disps_ids{
-    {L"",                       s_disps_n++},
+    {L"",                         0},
     // consts
-    {L"vbBinaryCompare",        s_disps_n++},
-    {L"vbTextCompare",          s_disps_n++},
-    {L"vbSunday",               s_disps_n++},
-    {L"vbMonday",               s_disps_n++},
-    {L"vbTuesday",              s_disps_n++},
-    {L"vbWednesday",            s_disps_n++},
-    {L"vbThursday",             s_disps_n++},
-    {L"vbFriday",               s_disps_n++},
-    {L"vbSaturday",             s_disps_n++},
-    {L"vbUseSystemDayOfWeek",   s_disps_n++},
-    {L"vbFirstJan1",            s_disps_n++},
-    {L"vbFirstFourDays",        s_disps_n++},
-    {L"vbFirstFullWeek",        s_disps_n++},
-    {L"vbGeneralDate",          s_disps_n++},
-    {L"vbLongDate",             s_disps_n++},
-    {L"vbShortDate",            s_disps_n++},
-    {L"vbLongTime",             s_disps_n++},
-    {L"vbShortTime",            s_disps_n++},
-    {L"vbObjectError",          s_disps_n++},
-    {L"vbUseDefault",           s_disps_n++},
-    {L"vbTrue",                 s_disps_n++},
-    {L"vbFalse",                s_disps_n++},
-    {L"vbEmpty",                s_disps_n++},
-    {L"vbNull",                 s_disps_n++},
-    {L"vbInteger",              s_disps_n++},
-    {L"vbLong",                 s_disps_n++},
-    {L"vbSingle",               s_disps_n++},
-    {L"vbDouble",               s_disps_n++},
-    {L"vbCurrency",             s_disps_n++},
-    {L"vbDate",                 s_disps_n++},
-    {L"vbString",               s_disps_n++},
-    {L"vbObject",               s_disps_n++},
-    {L"vbError",                s_disps_n++},
-    {L"vbBoolean",              s_disps_n++},
-    {L"vbVariant",              s_disps_n++},
-    {L"vbDataObject",           s_disps_n++},
-    {L"vbDecimal",              s_disps_n++},
-    {L"vbByte",                 s_disps_n++},
-    {L"vbArray",                s_disps_n++},
-    {L"vbCr",                   s_disps_n++},
-    {L"VbCrLf",                 s_disps_n++},
-    {L"vbFormFeed",             s_disps_n++},
-    {L"vbLf",                   s_disps_n++},
-    {L"vbNewLine",              s_disps_n++},
-    {L"vbNullChar",             s_disps_n++},
-    {L"vbNullString",           s_disps_n++},
-    {L"vbTab",                  s_disps_n++},
-    {L"vbVerticalTab",          s_disps_n++},
+    {L"vbBinaryCompare",          1},
+    {L"vbTextCompare",            2},
+    {L"vbSunday",                 3},
+    {L"vbMonday",                 4},
+    {L"vbTuesday",                5},
+    {L"vbWednesday",              6},
+    {L"vbThursday",               7},
+    {L"vbFriday",                 8},
+    {L"vbSaturday",               9},
+    {L"vbUseSystemDayOfWeek",    10},
+    {L"vbFirstJan1",             11},
+    {L"vbFirstFourDays",         12},
+    {L"vbFirstFullWeek",         13},
+    {L"vbGeneralDate",           14},
+    {L"vbLongDate",              15},
+    {L"vbShortDate",             16},
+    {L"vbLongTime",              17},
+    {L"vbShortTime",             18},
+    {L"vbObjectError",           19},
+    {L"vbUseDefault",            20},
+    {L"vbTrue",                  21},
+    {L"vbFalse",                 22},
+    {L"vbEmpty",                 23},
+    {L"vbNull",                  24},
+    {L"vbInteger",               25},
+    {L"vbLong",                  26},
+    {L"vbSingle",                27},
+    {L"vbDouble",                28},
+    {L"vbCurrency",              29},
+    {L"vbDate",                  30},
+    {L"vbString",                31},
+    {L"vbObject",                32},
+    {L"vbError",                 33},
+    {L"vbBoolean",               34},
+    {L"vbVariant",               35},
+    {L"vbDataObject",            36},
+    {L"vbDecimal",               37},
+    {L"vbByte",                  38},
+    {L"vbArray",                 39},
+    {L"vbCr",                    40},
+    {L"VbCrLf",                  41},
+    {L"vbFormFeed",              42},
+    {L"vbLf",                    43},
+    {L"vbNewLine",               44},
+    {L"vbNullChar",              45},
+    {L"vbNullString",            46},
+    {L"vbTab",                   47},
+    {L"vbVerticalTab",           48},
     // functions
-    {L"CreateObject",           s_disps_n++},
-    {L"GetObject",              s_disps_n++},
-    {L"TypeName",               s_disps_n++},
-    {L"VarDump",                s_disps_n++},
-    {L"VarType",                s_disps_n++},
-    {L"IsArray",                s_disps_n++},
-    {L"IsObject",               s_disps_n++},
-    {L"IsEmpty",                s_disps_n++},
-    {L"IsNull",                 s_disps_n++},
-    {L"IsDate",                 s_disps_n++},
-    {L"IsNumeric",              s_disps_n++},
-    {L"CBool",                  s_disps_n++},
-    {L"CByte",                  s_disps_n++},
-    {L"CCur",                   s_disps_n++},
-    {L"CDate",                  s_disps_n++},
-    {L"CDbl",                   s_disps_n++},
-    {L"CInt",                   s_disps_n++},
-    {L"CLng",                   s_disps_n++},
-    {L"CLnglng",                s_disps_n++},
-    {L"CSng",                   s_disps_n++},
-    {L"CStr",                   s_disps_n++},
-    {L"LBound",                 s_disps_n++},
-    {L"UBound",                 s_disps_n++},
-    {L"Array",                  s_disps_n++},
-    {L"Randomize",              s_disps_n++},
-    {L"Rnd",                    s_disps_n++},
-    {L"Int",                    s_disps_n++},
-    {L"Fix",                    s_disps_n++},
-    {L"Round",                  s_disps_n++},
-    {L"Sgn",                    s_disps_n++},
-    {L"Abs",                    s_disps_n++},
-    {L"Sqr",                    s_disps_n++},
-    {L"Sin",                    s_disps_n++},
-    {L"Cos",                    s_disps_n++},
-    {L"Tan",                    s_disps_n++},
-    {L"Atn",                    s_disps_n++},
-    {L"Log",                    s_disps_n++},
-    {L"Exp",                    s_disps_n++},
-    {L"Len",                    s_disps_n++},
-    {L"Left",                   s_disps_n++},
-    {L"Right",                  s_disps_n++},
-    {L"Mid",                    s_disps_n++},
-    {L"LCase",                  s_disps_n++},
-    {L"UCase",                  s_disps_n++},
-    {L"LTrim",                  s_disps_n++},
-    {L"RTrim",                  s_disps_n++},
-    {L"Trim",                   s_disps_n++},
-    {L"InStr",                  s_disps_n++},
-    {L"InStrRev",               s_disps_n++},
-    {L"StrComp",                s_disps_n++},
-    {L"Replace",                s_disps_n++},
-    {L"StrReverse",             s_disps_n++},
-    {L"String",                 s_disps_n++},
-    {L"Space",                  s_disps_n++},
-    {L"Chr",                    s_disps_n++},
-    {L"ChrW",                   s_disps_n++},
-    {L"Asc",                    s_disps_n++},
-    {L"AscW",                   s_disps_n++},
-    {L"Oct",                    s_disps_n++},
-    {L"Hex",                    s_disps_n++},
-    {L"Join",                   s_disps_n++},
-    {L"Split",                  s_disps_n++},
-    {L"Filter",                 s_disps_n++},
-    {L"Now",                    s_disps_n++},
-    {L"Date",                   s_disps_n++},
-    {L"Time",                   s_disps_n++},
-    {L"Year",                   s_disps_n++},
-    {L"Month",                  s_disps_n++},
-    {L"Day",                    s_disps_n++},
-    {L"Weekday",                s_disps_n++},
-    {L"Hour",                   s_disps_n++},
-    {L"Minute",                 s_disps_n++},
-    {L"Second",                 s_disps_n++},
-    {L"Timer",                  s_disps_n++},
-    {L"DateAdd",                s_disps_n++},
-    {L"DateDiff",               s_disps_n++},
-    {L"DatePart",               s_disps_n++},
-    {L"DateSerial",             s_disps_n++},
-    {L"DateValue",              s_disps_n++},
-    {L"TimeSerial",             s_disps_n++},
-    {L"TimeValue",              s_disps_n++},
-    {L"FormatCurrency",         s_disps_n++},
-    {L"FormatDateTime",         s_disps_n++},
-    {L"FormatNumber",           s_disps_n++},
-    {L"FormatPercent",          s_disps_n++},
-    {L"Eval",                   s_disps_n++},
-    {L"Execute",                s_disps_n++},
-    {L"ExecuteGlobal",          s_disps_n++},
+    {L"CreateObject",            49},
+    {L"GetObject",               50},
+    {L"TypeName",                51},
+    {L"VarDump",                 52},
+    {L"VarType",                 53},
+    {L"IsArray",                 54},
+    {L"IsObject",                55},
+    {L"IsEmpty",                 56},
+    {L"IsNull",                  57},
+    {L"IsDate",                  58},
+    {L"IsNumeric",               59},
+    {L"CBool",                   60},
+    {L"CByte",                   61},
+    {L"CCur",                    62},
+    {L"CDate",                   63},
+    {L"CDbl",                    64},
+    {L"CInt",                    65},
+    {L"CLng",                    66},
+    {L"CLnglng",                 67},
+    {L"CSng",                    68},
+    {L"CStr",                    69},
+    {L"LBound",                  70},
+    {L"UBound",                  71},
+    {L"Array",                   72},
+    {L"Randomize",               73},
+    {L"Rnd",                     74},
+    {L"Int",                     75},
+    {L"Fix",                     76},
+    {L"Round",                   77},
+    {L"Sgn",                     78},
+    {L"Abs",                     79},
+    {L"Sqr",                     80},
+    {L"Sin",                     81},
+    {L"Cos",                     82},
+    {L"Tan",                     83},
+    {L"Atn",                     84},
+    {L"Log",                     85},
+    {L"Exp",                     86},
+    {L"Len",                     87},
+    {L"Left",                    88},
+    {L"Right",                   89},
+    {L"Mid",                     90},
+    {L"LCase",                   91},
+    {L"UCase",                   92},
+    {L"LTrim",                   93},
+    {L"RTrim",                   94},
+    {L"Trim",                    95},
+    {L"InStr",                   96},
+    {L"InStrRev",                97},
+    {L"StrComp",                 98},
+    {L"Replace",                 99},
+    {L"StrReverse",             100},
+    {L"String",                 101},
+    {L"Space",                  102},
+    {L"Chr",                    103},
+    {L"ChrW",                   104},
+    {L"Asc",                    105},
+    {L"AscW",                   106},
+    {L"Oct",                    107},
+    {L"Hex",                    108},
+    {L"Join",                   109},
+    {L"Split",                  110},
+    {L"Filter",                 111},
+    {L"Now",                    112},
+    {L"Date",                   113},
+    {L"Time",                   114},
+    {L"Year",                   115},
+    {L"Month",                  116},
+    {L"Day",                    117},
+    {L"Weekday",                118},
+    {L"Hour",                   119},
+    {L"Minute",                 120},
+    {L"Second",                 121},
+    {L"Timer",                  122},
+    {L"DateAdd",                123},
+    {L"DateDiff",               124},
+    {L"DatePart",               125},
+    {L"DateSerial",             126},
+    {L"DateValue",              127},
+    {L"TimeSerial",             128},
+    {L"TimeValue",              129},
+    {L"FormatCurrency",         130},
+    {L"FormatDateTime",         131},
+    {L"FormatNumber",           132},
+    {L"FormatPercent",          133},
+    {L"Eval",                   134},
+    {L"Execute",                135},
+    {L"ExecuteGlobal",          136},
 };
+int VBScript::s_disps_n = 137;
 
 std::vector<VBScript::invoke_t> VBScript::s_invokes{
     &VBScript::_, // ""
@@ -2848,7 +2888,7 @@ class OBScript : public IDispatch,
 	public IActiveScriptParse,
 	public IActiveScript{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 	IActiveScriptSite* m_pSite = nullptr;
     SCRIPTSTATE        m_ss = SCRIPTSTATE_UNINITIALIZED;
@@ -2857,19 +2897,21 @@ private:
 	CExtension	m_ext;
     CProcessor* m_pPrcs = nullptr;
 
+	bool m_stop = false;
+
 public:
     OBScript(){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
     }
     ~OBScript(){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
         if(m_pPrcs) delete m_pPrcs;
     }
 
 // IActiveScriptParse
 	HRESULT STDMETHODCALLTYPE InitNew(void
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return S_OK;
 	}
 	
@@ -2890,7 +2932,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [out] */ __RPC__deref_out_opt BSTR *pbstrName,
 		/* [out] */ __RPC__out EXCEPINFO *pexcepinfo
 	){
-fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
+DEBUG("%s: %ls\n", __func__, pstrCode)
 		return E_NOTIMPL;
 	}
 	
@@ -2909,8 +2951,10 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 		/* [out] */ __RPC__out VARIANT *pvarResult,
 		/* [out] */ __RPC__out EXCEPINFO *pexcepinfo
 	){
-fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
+DEBUG("%s: %ls\n", __func__, pstrCode)
         HRESULT hr = E_FAIL;
+
+		if(dwFlags & SCRIPTTEXT_ISEXPRESSION) return E_FAIL;
 
         wchar_t* buf = (wchar_t*)malloc( sizeof(wchar_t) * (wcslen(pstrCode)+1) );
 
@@ -2931,13 +2975,23 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 
         size_t errline;
         if(!prog->isReady(errline)){
-            fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+			ActiveScriptError* perr = new ActiveScriptError(
+				L"openvbs",
+				L"parse error",
+				E_FAIL,
+				errline,
+				-1,
+				L"..."
+			);
+			m_pSite->OnScriptError(perr);
+			perr->Release();
+
             hr = E_FAIL;
         }else
         if(m_pPrcs){
             hr = (*m_pPrcs += prog);
         }else{
-            m_pPrcs = new CProcessor(prog, &m_vbs, &m_ext);
+            m_pPrcs = new CProcessor(prog, &m_vbs, &m_ext, &m_stop);
             m_vbs.m_pProcessor = m_pPrcs;
             hr = S_OK;
         }
@@ -2951,7 +3005,7 @@ fprintf(flog, "%s: %ls\n", __func__, pstrCode); fflush(flog);
 	HRESULT STDMETHODCALLTYPE SetScriptSite( 
 		/* [in] */ __RPC__in_opt IActiveScriptSite *pass
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		(m_pSite = pass)->AddRef();
 		return S_OK;
 	}
@@ -2960,7 +3014,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ __RPC__in REFIID riid,
 		/* [iid_is][out] */ __RPC__deref_out_opt void **ppvObject
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 	
@@ -2968,11 +3022,11 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ SCRIPTSTATE ss
 	){
 		if(ss == SCRIPTSTATE_INITIALIZED){
-fprintf(flog, "%s: SCRIPTSTATE_INITIALIZED\n", __func__); fflush(flog);
+DEBUG("%s: SCRIPTSTATE_INITIALIZED\n", __func__)
 			// AddNamedItem has been called
 		}else
 		if(ss == SCRIPTSTATE_STARTED){
-fprintf(flog, "%s: SCRIPTSTATE_STARTED\n", __func__); fflush(flog);
+DEBUG("%s: SCRIPTSTATE_STARTED\n", __func__)
             // Obtain context objects
             auto i = m_ext.begin();
             while( i != m_ext.end() ){
@@ -2992,19 +3046,19 @@ fprintf(flog, "%s: SCRIPTSTATE_STARTED\n", __func__); fflush(flog);
             HRESULT hr = (*m_pPrcs)();
 
 			if(FAILED(hr)){
-fprintf(flog, "  [!!!ERROR!!!] %ls in line:%d\n", m_pPrcs->m_err->bstrDescription, m_pPrcs->m_err->dwHelpContext); fflush(flog);
-				fwprintf(stderr, L"![0x%x]%ls in line:%d\n", hr, m_pPrcs->m_err->bstrDescription, m_pPrcs->m_err->dwHelpContext);
-
+DEBUG("  [!!!ERROR!!!] %ls in line:%d\n", m_pPrcs->m_err->bstrDescription, m_pPrcs->m_err->dwHelpContext)
                 ActiveScriptError* perr = new ActiveScriptError( m_pPrcs->m_err );
+				perr->ulLineNumber = m_pPrcs->m_err->dwHelpContext;
                 m_pSite->OnScriptError(perr);
                 perr->Release();
 			}
-fprintf(flog, "  //\n"); fflush(flog);
+DEBUG("  //\n")
 		}else
 		if(ss == SCRIPTSTATE_UNINITIALIZED){
-fprintf(flog, "%s: SCRIPTSTATE_UNINITIALIZED\n", __func__); fflush(flog);
+DEBUG("%s: SCRIPTSTATE_UNINITIALIZED\n", __func__)
 			// ASP execution is end
             m_pPrcs->Reset();
+			m_stop = false;
 
             auto i = m_ext.begin();
             while( i != m_ext.end() ){
@@ -3012,7 +3066,7 @@ fprintf(flog, "%s: SCRIPTSTATE_UNINITIALIZED\n", __func__); fflush(flog);
                 ++i;
             }
 		}else{
-fprintf(flog, "%s: %d\n", __func__, ss);  fflush(flog); fflush(flog);
+DEBUG("%s: %d\n", __func__, ss)
         }
 
         m_ss = ss;
@@ -3024,7 +3078,7 @@ fprintf(flog, "%s: %d\n", __func__, ss);  fflush(flog); fflush(flog);
 	HRESULT STDMETHODCALLTYPE GetScriptState( 
 		/* [out] */ __RPC__out SCRIPTSTATE *pssState
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 *pssState = m_ss;
 return S_OK;
 		return E_NOTIMPL;
@@ -3032,7 +3086,7 @@ return S_OK;
 	
 	HRESULT STDMETHODCALLTYPE Close(void
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		m_pSite->Release(); m_pSite = nullptr;
         if(m_pPrcs){ delete m_pPrcs; m_pPrcs = nullptr; }
 		return S_OK;
@@ -3043,7 +3097,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ DWORD dwFlags
 	){
 // SCRIPTITEM_CODEONLY
-fprintf(flog, "%s: %ls %x\n", __func__, pstrName, dwFlags); fflush(flog);
+DEBUG("%s: %ls %x\n", __func__, pstrName, dwFlags)
 		IUnknown* p = nullptr;
 		ITypeInfo* pType = nullptr;
 		if( SUCCEEDED(m_pSite->GetItemInfo(pstrName, SCRIPTINFO_IUNKNOWN, &p, &pType)) ){
@@ -3063,7 +3117,7 @@ fprintf(flog, "%s: %ls %x\n", __func__, pstrName, dwFlags); fflush(flog);
 		/* [in] */ DWORD dwMinor,
 		/* [in] */ DWORD dwFlags
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 	
@@ -3071,7 +3125,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ __RPC__in LPCOLESTR pstrItemName,
 		/* [out] */ __RPC__deref_out_opt IDispatch **ppdisp
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 (*ppdisp = (IDispatch*)this)->AddRef();
 return S_OK;
 		return E_NOTIMPL;
@@ -3080,7 +3134,7 @@ return S_OK;
 	HRESULT STDMETHODCALLTYPE GetCurrentScriptThreadID( 
 		/* [out] */ __RPC__out SCRIPTTHREADID *pstidThread
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 	
@@ -3088,7 +3142,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ DWORD dwWin32ThreadId,
 		/* [out] */ __RPC__out SCRIPTTHREADID *pstidThread
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 	
@@ -3096,7 +3150,7 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ SCRIPTTHREADID stidThread,
 		/* [out] */ __RPC__out SCRIPTTHREADSTATE *pstsState
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 	
@@ -3105,14 +3159,15 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		/* [in] */ __RPC__in const EXCEPINFO *pexcepinfo,
 		/* [in] */ DWORD dwFlags
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
-		return E_NOTIMPL;
+DEBUG("%s\n", __func__)
+		m_stop = true;
+		return S_OK;
 	}
 	
 	HRESULT STDMETHODCALLTYPE Clone( 
 		/* [out] */ __RPC__deref_out_opt IActiveScript **ppscript
 	){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 
@@ -3132,20 +3187,20 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
 		}else{
 OLECHAR buf[256];
 ::StringFromGUID2(riid, buf, 256);
-fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
-			return E_NOTIMPL;
+DEBUG("[NOTIMPL]%ls\n", buf)
+			return E_NOINTERFACE;
 		}
 
 		this->AddRef();
 		return S_OK;
 	}
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
-fprintf(flog, "%s: %ls\n", __func__, *rgszNames); fflush(flog);
+DEBUG("%s: %ls\n", __func__, *rgszNames)
         if(_wcsicmp(*rgszNames, L"xxxxxx") == 0){
             *rgDispId = 1;
         }else
@@ -3174,7 +3229,7 @@ fprintf(flog, "%s: %ls\n", __func__, *rgszNames); fflush(flog);
 
 class CFactory : public IClassFactory{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
@@ -3187,18 +3242,18 @@ public:
         {
 OLECHAR buf[256];
 ::StringFromGUID2(riid, buf, 256);
-fprintf(flog, "[NOTIMPL]%ls\n", buf); fflush(flog);
-			return E_NOTIMPL;
+DEBUG("[NOTIMPL]%ls\n", buf)
+			return E_NOINTERFACE;
 		}
 
 		this->AddRef();
 		return S_OK;
     }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef(){ return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
         OBScript* p = new OBScript();
         HRESULT hr = p->QueryInterface(riid, ppvObject);
         p->Release();
@@ -3206,7 +3261,11 @@ fprintf(flog, "%s\n", __func__); fflush(flog);
     }
     
     HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock){
-        m_refc += fLock ? 1 : -1;
+		if(fLock){
+			InterlockedIncrement(&m_refc);
+		}else{
+			InterlockedDecrement(&m_refc);
+		}
         return S_OK;
     }
 } g_oFactory;
@@ -3231,8 +3290,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved){
 	case DLL_PROCESS_ATTACH:
 		{
 			::GetModuleFileNameW(hinstDLL, g_aDLLPath, MAX_PATH);
-// flog = fopen("C:\\Users\\yrm\\Desktop\\obscript\\log.txt", "a");
-fprintf(flog, "%s\n", __func__); fflush(flog);
+DEBUG("%s\n", __func__)
 		}
 		break;
 	case DLL_PROCESS_DETACH:
@@ -3306,14 +3364,14 @@ HRESULT RegistCOM(const wchar_t* pProgID, const wchar_t* pCLSID, const wchar_t* 
 	if(
 		::RegCreateKeyExW(HKEY_CLASSES_ROOT, pProgID, 0, REG_NONE, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hPROGID, &dwDisposition)	== ERROR_SUCCESS &&
 		::RegCreateKeyExW(hPROGID, L"CLSID", 0, REG_NONE, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hPROGID_CLSID, &dwDisposition)		== ERROR_SUCCESS &&
-		::RegSetValueExW(hPROGID_CLSID, NULL, 0, REG_SZ, (const BYTE *)pCLSID, 38*2)														== ERROR_SUCCESS &&
+		::RegSetValueExW(hPROGID_CLSID, NULL, 0, REG_SZ, (const BYTE *)pCLSID, 2*38+2)														== ERROR_SUCCESS &&
 
 		::RegOpenKeyExW(HKEY_CLASSES_ROOT, L"CLSID", 0, KEY_READ | KEY_WRITE, &hCLSID)	== ERROR_SUCCESS &&
 			::RegCreateKeyExW(hCLSID, pCLSID, 0, REG_NONE, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hCLSID_CLSID, &dwDisposition)									== ERROR_SUCCESS &&
-			::RegSetValueExW(hCLSID_CLSID, NULL, 0, REG_SZ, (const BYTE *)pProgID, (DWORD)::wcslen(pProgID)*2)															== ERROR_SUCCESS &&
+			::RegSetValueExW(hCLSID_CLSID, NULL, 0, REG_SZ, (const BYTE *)pProgID, 2*(DWORD)::wcslen(pProgID)+2)															== ERROR_SUCCESS &&
 			::RegCreateKeyExW(hCLSID_CLSID, L"InProcServer32", 0, REG_NONE, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hCLSID_CLSID_InProcServer32, &dwDisposition)	== ERROR_SUCCESS &&
-			::RegSetValueExW(hCLSID_CLSID_InProcServer32, NULL, 0, REG_SZ, (const BYTE *)g_aDLLPath, (DWORD)::wcslen(g_aDLLPath)*2)										== ERROR_SUCCESS &&
-			::RegSetValueExW(hCLSID_CLSID_InProcServer32, L"ThreadingModel", 0, REG_SZ, (const BYTE *)pThreadingModel, (DWORD)::wcslen(pThreadingModel)*2)				== ERROR_SUCCESS &&
+			::RegSetValueExW(hCLSID_CLSID_InProcServer32, NULL, 0, REG_SZ, (const BYTE *)g_aDLLPath, 2*(DWORD)::wcslen(g_aDLLPath)+2)										== ERROR_SUCCESS &&
+			::RegSetValueExW(hCLSID_CLSID_InProcServer32, L"ThreadingModel", 0, REG_SZ, (const BYTE *)pThreadingModel, 2*(DWORD)::wcslen(pThreadingModel)+2)				== ERROR_SUCCESS &&
 		true)
 	{
 		hr = S_OK;

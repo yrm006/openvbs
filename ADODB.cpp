@@ -4,15 +4,15 @@
 
 class Recordset : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     Recordset(){/*wprintf(L"%s\n", __func__);*/}
     virtual ~Recordset(){/*wprintf(L"%s\n", __func__);*/}
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -47,15 +47,15 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
 
 class Connection : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     Connection(){/*wprintf(L"%s\n", __func__);*/}
     virtual ~Connection(){/*wprintf(L"%s\n", __func__);*/}
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -96,7 +96,7 @@ wprintf(L"###%s: Implement here '%s' line %d. (%ls)\n", __func__, __FILE__, __LI
 
 class CFactory : public IClassFactory{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     CFactory(){}
@@ -104,8 +104,8 @@ public:
 
 public:
     HRESULT QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG AddRef(){ return ++m_refc; }
-    ULONG Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
         *ppvObject = new Connection();
@@ -113,7 +113,11 @@ public:
     }
     
     HRESULT LockServer(BOOL fLock){
-        m_refc += fLock ? 1 : -1;
+        if(fLock){
+            InterlockedIncrement(&m_refc);
+        }else{
+            InterlockedDecrement(&m_refc);
+        }
         return S_OK;
     }
 } g_oFactory;

@@ -72,11 +72,11 @@ IClassFactory* CFVBScript  = nullptr;
 //---------------------------
 
 class JPO : public IDispatch{
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -310,12 +310,12 @@ public:
     virtual ~IchigoPage(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
     PMODE       m_pmode  = PM_CRLF;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -509,7 +509,7 @@ private:
 
 class Contents : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 protected:
     std::map<_variant_t, _variant_t> m_map;
@@ -525,8 +525,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -580,11 +580,11 @@ public:
     virtual ~Server(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -609,13 +609,13 @@ public:
     }
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     Contents*   m_pCtnts;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -652,11 +652,11 @@ public:
     virtual ~Session(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -677,11 +677,11 @@ public:
     virtual ~Request(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -708,11 +708,11 @@ public:
     virtual ~Response(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -780,11 +780,11 @@ public:
     virtual ~Client(){}
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -856,6 +856,8 @@ public:
     CProgram    m_oProgram;
     CProcessor  m_oProcessor;
 
+    bool        m_stop = false;
+
     Unit(SOCKET sock, const wchar_t* pSource)
         : m_oClient(sock)
         , m_oVBScript()
@@ -865,7 +867,7 @@ public:
             { L"Client"     , (IDispatch*)&m_oClient },
         }
         , m_oProgram(pSource)
-        , m_oProcessor(&m_oProgram, &m_oVBScript, &m_oExt)
+        , m_oProcessor(&m_oProgram, &m_oVBScript, &m_oExt, &m_stop)
     {}
 
     ~Unit(){}
@@ -1226,7 +1228,9 @@ int  on_http_request_osp(SOCKET sock, context* ctx, FILE* f){
             const wchar_t* pSource2 = source2.c_str();
             CProgram oProgram(pSource2);
 
-            CProcessor oProcessor(&oProgram, pVBScript, &oExt);
+            bool stop = false;
+
+            CProcessor oProcessor(&oProgram, pVBScript, &oExt, &stop);
                 
             hr = oProcessor();
 
@@ -1317,7 +1321,9 @@ int  on_http_request_isp(SOCKET sock, context* ctx, FILE* f){
             const wchar_t* pSource = source.c_str();
             CProgram oProgram(pSource);
 
-            CProcessor oProcessor(&oProgram, &oScript, &oExt);
+            bool stop = false;
+
+            CProcessor oProcessor(&oProgram, &oScript, &oExt, &stop);
             
             hr = oProcessor();
 
@@ -1452,15 +1458,15 @@ int  on_http_request_isp(SOCKET sock, context* ctx, FILE* f){
 
 class OpenASP : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     OpenASP(){/*wprintf(L"%s\n", __func__);*/}
     virtual ~OpenASP(){/*wprintf(L"%s\n", __func__);*/}
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -1501,7 +1507,7 @@ public:
 
 class CFactory : public IClassFactory{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     CFactory(){}
@@ -1509,8 +1515,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject){
         *ppvObject = new OpenASP;
@@ -1518,7 +1524,11 @@ public:
     }
     
     HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock){
-        m_refc += fLock ? 1 : -1;
+        if(fLock){
+            InterlockedIncrement(&m_refc);
+        }else{
+            InterlockedDecrement(&m_refc);
+        }
         return S_OK;
     }
 } g_oFactory;

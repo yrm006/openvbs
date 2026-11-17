@@ -336,6 +336,14 @@ HMODULE LoadLibraryW(LPOLESTR lpszLibName);
 HMODULE GetModuleHandleW(LPCWSTR lpModuleName);
 PROC GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
 void GetLocalTime(LPSYSTEMTIME lpSystemTime);
+static inline
+LONG InterlockedIncrement(volatile LONG* p){
+    return __atomic_add_fetch(p, 1, __ATOMIC_SEQ_CST);
+}
+static inline
+LONG InterlockedDecrement(volatile LONG* p){
+    return __atomic_sub_fetch(p, 1, __ATOMIC_SEQ_CST);
+}
 
 // ole
 HRESULT CLSIDFromProgID(LPCOLESTR lpszProgID, LPCLSID lpclsid);

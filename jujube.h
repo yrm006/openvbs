@@ -183,7 +183,7 @@ struct word_t{ istring s; void* p; _variant_t v; size_t l; };
 
 class JSONObjectEnum : public IEnumVARIANT{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     _disp_ptr_t                                        m_hold;
     const std::map<std::wstring, _variant_t>&          m_r;
@@ -212,8 +212,8 @@ public:
 
         return S_OK;
     }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched){
         ULONG i = 0;
@@ -235,7 +235,7 @@ public:
 
 class JSONObject : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
     _variant_t* m_pvLast = nullptr;
 
 public:
@@ -300,8 +300,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -382,7 +382,7 @@ class JSONArray;
 
 class JSONArrayEnum : public IEnumVARIANT{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     _disp_ptr_t                             m_hold;
     const std::vector<_variant_t>&          m_r;
@@ -411,8 +411,8 @@ public:
 
         return S_OK;
     }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched){
         ULONG i = 0;
@@ -441,7 +441,7 @@ public:
     };
 
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     std::vector<_variant_t> m_vec;
@@ -500,8 +500,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -608,7 +608,7 @@ public:
 
 class SafeArrayEnum : public IEnumVARIANT{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     SAFEARRAY*  m_psa;
     VARIANT*    m_p      = NULL;
@@ -652,8 +652,8 @@ public:
         return S_OK;
     }
 
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE Next(ULONG celt, VARIANT *rgVar, ULONG *pCeltFetched){
         ULONG i = 0;
@@ -676,7 +676,7 @@ public:
 
 class WeakDispatch : public IDispatch{
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
     IDispatch*  m_pdisp;
 
 public:
@@ -687,8 +687,8 @@ public:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return m_pdisp->GetTypeInfoCount(pctinfo); }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return m_pdisp->GetTypeInfo(iTInfo, lcid, ppTInfo); }
@@ -706,7 +706,7 @@ public:
 
 class Error : public EXCEPINFO, public IDispatch{
 private:
-    ULONG   m_refc   = 1;
+    volatile LONG   m_refc   = 1;
 
 public:
     HRESULT m_hr = E_FAIL;
@@ -743,8 +743,8 @@ public:
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -808,17 +808,19 @@ public:
             return S_OK;
         }else
         if(dispIdMember == 11){
-            if(1 <= pDispParams->cArgs){
-                pExcepInfo->wCode = pDispParams->rgvarg[pDispParams->cArgs-1].uiVal;
-            }//NOTELSE
-            if(2 <= pDispParams->cArgs){
-                SysFreeString(pExcepInfo->bstrSource);
-                pExcepInfo->bstrSource = SysAllocString(pDispParams->rgvarg[pDispParams->cArgs-2].bstrVal);
-            }//NOTELSE
-            if(3 <= pDispParams->cArgs){
-                SysFreeString(pExcepInfo->bstrDescription);
-                pExcepInfo->bstrDescription = SysAllocString(pDispParams->rgvarg[pDispParams->cArgs-3].bstrVal);
-            }//NOTELSE
+            if(pExcepInfo){
+                if(1 <= pDispParams->cArgs){
+                    pExcepInfo->wCode = pDispParams->rgvarg[pDispParams->cArgs-1].uiVal;
+                }//NOTELSE
+                if(2 <= pDispParams->cArgs){
+                    SysFreeString(pExcepInfo->bstrSource);
+                    pExcepInfo->bstrSource = SysAllocString(pDispParams->rgvarg[pDispParams->cArgs-2].bstrVal);
+                }//NOTELSE
+                if(3 <= pDispParams->cArgs){
+                    SysFreeString(pExcepInfo->bstrDescription);
+                    pExcepInfo->bstrDescription = SysAllocString(pDispParams->rgvarg[pDispParams->cArgs-3].bstrVal);
+                }//NOTELSE
+            }
 
             return E_FAIL;
         }else
@@ -2149,7 +2151,7 @@ public:
             }else
             if(*c0==L'{'){
                 int nest = 1;
-                while(nest){
+                while(nest && *c){
                     if(*c==L'{') ++nest;
                     else
                     if(*c==L'}') --nest;
@@ -2161,7 +2163,7 @@ public:
             }else
             if(*c0==L'['){
                 int nest = 1;
-                while(nest){
+                while(nest && *c){
                     if(*c==L'[') ++nest;
                     else
                     if(*c==L']') --nest;
@@ -2293,18 +2295,12 @@ public:
 
 //IDispatch
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){
-// wprintf(L"%ls:+[%d]\n", m_name.c_str(), m_refc+1);
-        return ++m_refc;
-    }
-    ULONG STDMETHODCALLTYPE Release(){
-// wprintf(L"%ls:-[%d]\n", m_name.c_str(), m_refc-1);
-        if(!--m_refc){ delete this; return 0; } return m_refc;
-    }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -2406,6 +2402,8 @@ private:
     std::map<istring, _variant_t>*  m_pgadims;
 
     mode_t m_mode;
+
+	const bool*  m_pstop;
 
     bool op_copy(VARIANT* p){
         //---OLD
@@ -3353,6 +3351,12 @@ private:
 
         while(p-3 < &m_s.back()) m_s.pop_back();
 
+        if(vO.vt != VT_DISPATCH || !vO.pdispVal){
+            m_mode = &CProcessor::clock_throw_nomember;
+            --m_pc;
+            return false;
+        }
+
         _variant_t res;
         if(FAILED( m_err->m_hr = vO.pdispVal->Invoke(vD.lVal, IID_NULL, 0, DISPATCH_METHOD|DISPATCH_PROPERTYGET, &param, &res, m_err, &m_err->m_an) )){
             m_mode = &CProcessor::clock_throw_object;
@@ -3809,7 +3813,7 @@ private:
                 _com_util::CheckError( E_FAIL );
             }
         }else
-        if(pv->vt == VT_DISPATCH){
+        if(pv->vt == VT_DISPATCH && pv->pdispVal){
             DISPPARAMS param = {
                 nullptr,
                 nullptr,
@@ -4562,9 +4566,13 @@ private:
             SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Overflow");
         }else
         if(!m_err->wCode){
-            m_err->wCode = 51;
-            SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
-            SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
+			if(m_err->bstrDescription){
+				// none
+			}else{
+				m_err->wCode = 51;
+				SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+				SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
+			}
         }
         return (this->*m_onerr.back())();
     }
@@ -4604,9 +4612,13 @@ private:
             SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Type mismatch");
         }else
         if(!m_err->wCode){
-            m_err->wCode = 51;
-            SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
-            SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
+			if(m_err->bstrDescription){
+				// none
+			}else{
+				m_err->wCode = 51;
+				SysFreeString(m_err->bstrSource); m_err->bstrSource = SysAllocString(NAME);
+				SysFreeString(m_err->bstrDescription); m_err->bstrDescription = SysAllocString(L"Internal error");
+			}
         }
         return (this->*m_onerr.back())();
     }
@@ -6488,7 +6500,7 @@ public:
 public:
     _err_ptr_t   m_err;
 
-    CProcessor(CProgram* pp, IDispatch* env, CExtension* ext, size_t size=0x100)
+    CProcessor(CProgram* pp, IDispatch* env, CExtension* ext, const bool* pstop, size_t size=0x100)
         : m_parent(nullptr)
         , m_ext(ext)
         , m_env(env)
@@ -6501,6 +6513,7 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
+		, m_pstop(pstop)
         , m_err(new Error(), false)
     {
         m_scope.reserve(size);
@@ -6538,6 +6551,7 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
+		, m_pstop(parent.m_pstop)
         , m_err(new Error(), false)
     {
         m_scope.reserve(parent.m_scope.capacity());
@@ -6581,6 +6595,7 @@ public:
         //, m_pgadims()
         , m_mode(&CProcessor::clock_)
         //---
+		, m_pstop(source.m_pstop)
         , m_err(new Error(), false)
     {
         m_scope.reserve(source.m_scope.capacity());
@@ -6672,7 +6687,12 @@ public:
 
         m_exec.back().push_back( proc );
 
-        return (*proc)();
+        HRESULT hr = (*proc)();
+        if(FAILED(hr) && proc->m_err){
+            m_err = proc->m_err;
+        }
+
+        return hr;
     }
 
     HRESULT operator()(CProgram& prog, VARIANT args[], int argn){
@@ -6740,7 +6760,7 @@ public:
             m_s.push_back(_variant_t());
             m_s.back().wReserved1 = VTX_GROUND;
 
-            while( (this->*m_mode)(m_pp->m_code[m_pc++]) );
+            while( !*m_pstop && (this->*m_mode)(m_pp->m_code[m_pc++]) );
         }catch(_com_error& e){
             hr = e.Error();
         }catch(...){
@@ -6991,6 +7011,7 @@ public:
 
     void Reset(){
         m_pc = 0;
+        m_pp = m_p0;
         m_mode = &CProcessor::clock_;
 
         m_err.Attach( new Error() );
@@ -7015,13 +7036,17 @@ public:
         m_exec.push_back( {} );
 
         m_s.clear();
+
+        // IDispatch
+        m_disp.clear();
+        m_disp_names.clear();
     }
 
 
 
 //IDispatch
 private:
-    ULONG       m_refc   = 1;
+    volatile LONG       m_refc   = 1;
 
     struct dispatch_t {
         _variant_t* pv;   // dim
@@ -7036,8 +7061,8 @@ private:
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef(){ return ++m_refc; }
-    ULONG STDMETHODCALLTYPE Release(){ if(!--m_refc){ delete this; return 0; } return m_refc; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_refc); }
+    ULONG STDMETHODCALLTYPE Release(){ LONG refc = InterlockedDecrement(&m_refc); if(!refc){ delete this; return 0; } return refc; }
 
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
@@ -7081,9 +7106,10 @@ public:
 
         auto i = m_exec.front().begin();
         while(i != m_exec.front().end()){
-            if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId))){
+            DISPID inner_id = 0;
+            if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, &inner_id))){
                 *rgDispId = m_disp.size() + DISPID_FORDYNAMICDISP;
-                m_disp.push_back( {nullptr, nullptr, nullptr, *i, *rgDispId} );
+                m_disp.push_back( {nullptr, nullptr, nullptr, *i, inner_id} );
                 m_disp_names[*rgszNames] = *rgDispId;
 
                 return S_OK;
@@ -7097,6 +7123,11 @@ public:
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
         HRESULT hr = DISP_E_MEMBERNOTFOUND;
+
+        DISPPARAMS dummy_dp = { NULL, NULL, 0, 0 };
+        VARIANT    dummy_vr; VariantInit(&dummy_vr);
+        if(!pDispParams) pDispParams = &dummy_dp;
+        if(!pVarResult)  pVarResult  = &dummy_vr;
 
         int i = 0;
         while (i < pDispParams->cArgs) {
@@ -7237,18 +7268,18 @@ public:
             }
         }else
         {
-            dispatch_t& disp = m_disp[dispIdMember-DISPID_FORDYNAMICDISP];
+            dispatch_t& disp = m_disp.at(dispIdMember-DISPID_FORDYNAMICDISP);
             if(disp.pr){
                 hr = disp.pr->Invoke(disp.id, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
             }else
             if(disp.pv){
-                if(wFlags == DISPATCH_PROPERTYPUT){
-                    hr = VariantCopy(disp.pv, pDispParams->rgvarg);
+                if(wFlags & DISPATCH_PROPERTYPUT){
+                    hr = pDispParams->rgvarg ? VariantCopy(disp.pv, pDispParams->rgvarg) : E_FAIL;
                 }else{
                     hr = VariantCopy(pVarResult, disp.pv);
                 }
             }else
-            if(wFlags == DISPATCH_PROPERTYPUT){
+            if(wFlags & DISPATCH_PROPERTYPUT){
                 if(SUCCEEDED( hr = (*this)(*disp.pp, pDispParams->rgvarg, pDispParams->cArgs) )){
                     *pVarResult = m_s.back().Detach();
                     m_s.pop_back();
