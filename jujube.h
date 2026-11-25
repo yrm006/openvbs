@@ -777,7 +777,7 @@ public:
             if(wFlags & DISPATCH_PROPERTYPUT){
                 this->wCode = pDispParams->rgvarg->llVal;
             }else{
-                *((_variant_t*)pVarResult) = (long long)this->wCode;
+                *((_variant_t*)pVarResult) = this->wCode ? (long long)this->wCode : (long long)this->scode;
             }
 
             return S_OK;
@@ -2244,7 +2244,7 @@ public:
     }
 
     bool isReady(size_t& errline){
-        errline = m_lines+1;
+        errline = m_lines;
         return m_parse_mode;
     }
 
@@ -3364,6 +3364,12 @@ private:
             return false;
         }
 
+        {
+            res.wReserved1 = VTX_NONE;
+            res.wReserved2 = VTX_NONE;
+            res.wReserved3 = VTX_NONE;
+        }
+
         m_s.push_back(res);
 
         return true;
@@ -3407,6 +3413,12 @@ private:
             m_mode = &CProcessor::clock_throw_object;
             --m_pc;
             return false;
+        }
+
+        {
+            res.wReserved1 = VTX_NONE;
+            res.wReserved2 = VTX_NONE;
+            res.wReserved3 = VTX_NONE;
         }
 
         m_s.push_back(res);

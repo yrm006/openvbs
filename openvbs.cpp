@@ -124,6 +124,7 @@ public:
 class VBScript : public IDispatch{
 public:
     typedef HRESULT (VBScript::*invoke_t)(DISPID, REFIID, LCID, WORD, DISPPARAMS*, VARIANT*, EXCEPINFO*, UINT*);
+    enum{ DISPID_FORADDEDITEMDISP = 0x10000 };
 
 private:
     volatile LONG       m_refc   = 1;
@@ -138,6 +139,9 @@ private:
 
     std::vector<_com_ptr_t<_com_IIID<IClassFactory, &IID_IClassFactory> > > m_cfs;
 
+    struct itemid{_disp_ptr_t p; DISPID id;};
+    std::vector<itemid>                                                     m_ids;
+
 public:
     VBScript(){
 DEBUG("%s\n", __func__)
@@ -151,6 +155,8 @@ DEBUG("%s\n", __func__)
 
 public:
     IDispatch* m_pProcessor = nullptr; // weak ptr
+
+    std::vector<_disp_ptr_t> m_addedItems;
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
@@ -186,11 +192,30 @@ public:
             }
         }
 
+        auto i = m_addedItems.begin();
+        while(i != m_addedItems.end()){
+            DISPID inner_id = 0;
+            if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, &inner_id))){
+                *rgDispId = DISPID_FORADDEDITEMDISP + (DISPID)m_ids.size();
+                m_ids.push_back( {*i, inner_id} );
+
+                return S_OK;
+            }
+            ++i;
+        }
+
         return DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
+        if(DISPID_FORADDEDITEMDISP <= dispIdMember){
+            size_t i = (size_t)(dispIdMember - DISPID_FORADDEDITEMDISP);
+            if(i < m_ids.size()){
+                return m_ids[i].p->Invoke(m_ids[i].id, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+            }
+            return DISP_E_MEMBERNOTFOUND;
+        }else
         if(dispIdMember < s_disps_n){
             invoke_t f = s_invokes[dispIdMember];
             if(f){
@@ -2954,7 +2979,22 @@ DEBUG("%s: %ls\n", __func__, pstrCode)
 DEBUG("%s: %ls\n", __func__, pstrCode)
         HRESULT hr = E_FAIL;
 
-		if(dwFlags & SCRIPTTEXT_ISEXPRESSION) return E_FAIL;
+		if(dwFlags & SCRIPTTEXT_ISEXPRESSION){
+            if(!m_pPrcs) return E_FAIL;
+            
+            if(pvarResult) VariantInit(pvarResult);
+
+            BSTR bstrExpr = SysAllocString(pstrCode);
+            VARIANT arg = {};{
+                arg.vt      = VT_BSTR;
+                arg.bstrVal = bstrExpr;
+            };
+            DISPPARAMS dp = { &arg, nullptr, 1, 0 };
+            HRESULT hr = m_pPrcs->Invoke(DISPID_EVAL, IID_NULL, 0, DISPATCH_METHOD, &dp, pvarResult, pexcepinfo, nullptr);
+            SysFreeString(bstrExpr);
+
+            return hr;
+        }
 
         wchar_t* buf = (wchar_t*)malloc( sizeof(wchar_t) * (wcslen(pstrCode)+1) );
 
@@ -2979,14 +3019,14 @@ DEBUG("%s: %ls\n", __func__, pstrCode)
 				L"openvbs",
 				L"parse error",
 				E_FAIL,
-				errline,
+				ulStartingLineNumber + errline,
 				-1,
 				L"..."
 			);
 			m_pSite->OnScriptError(perr);
 			perr->Release();
 
-            hr = E_FAIL;
+            hr = SCRIPT_E_REPORTED;
         }else
         if(m_pPrcs){
             hr = (*m_pPrcs += prog);
@@ -3006,6 +3046,11 @@ DEBUG("%s: %ls\n", __func__, pstrCode)
 		/* [in] */ __RPC__in_opt IActiveScriptSite *pass
 	){
 DEBUG("%s\n", __func__)
+        if(!pass) return E_POINTER;
+
+        if(m_pSite){
+            m_pSite->Release();
+        }
 		(m_pSite = pass)->AddRef();
 		return S_OK;
 	}
@@ -3025,7 +3070,7 @@ DEBUG("%s\n", __func__)
 DEBUG("%s: SCRIPTSTATE_INITIALIZED\n", __func__)
 			// AddNamedItem has been called
 		}else
-		if(ss == SCRIPTSTATE_STARTED){
+		if(ss == SCRIPTSTATE_STARTED || ss == SCRIPTSTATE_CONNECTED){
 DEBUG("%s: SCRIPTSTATE_STARTED\n", __func__)
             // Obtain context objects
             auto i = m_ext.begin();
@@ -3043,6 +3088,12 @@ DEBUG("%s: SCRIPTSTATE_STARTED\n", __func__)
             }
 
 			// Start this script
+            if(!m_pPrcs){
+                const wchar_t* empty = L"";
+                _prog_ptr_t emptyProg(new CProgram(empty), false);
+                m_pPrcs = new CProcessor(emptyProg, &m_vbs, &m_ext, &m_stop);
+                m_vbs.m_pProcessor = m_pPrcs;
+            }
             HRESULT hr = (*m_pPrcs)();
 
 			if(FAILED(hr)){
@@ -3087,8 +3138,16 @@ return S_OK;
 	HRESULT STDMETHODCALLTYPE Close(void
 	){
 DEBUG("%s\n", __func__)
-		m_pSite->Release(); m_pSite = nullptr;
-        if(m_pPrcs){ delete m_pPrcs; m_pPrcs = nullptr; }
+        if(m_pSite){
+            m_pSite->Release();
+            m_pSite = nullptr;
+        }
+        if(m_pPrcs){
+            delete m_pPrcs;
+            m_pPrcs = nullptr;
+        }
+        m_ext.clear();
+        m_ss = SCRIPTSTATE_CLOSED;
 		return S_OK;
 	}
 	
@@ -3096,14 +3155,18 @@ DEBUG("%s\n", __func__)
 		/* [in] */ __RPC__in LPCOLESTR pstrName,
 		/* [in] */ DWORD dwFlags
 	){
-// SCRIPTITEM_CODEONLY
-DEBUG("%s: %ls %x\n", __func__, pstrName, dwFlags)
+DEBUG("%s: %ls 0x%04x\n", __func__, pstrName, dwFlags)
 		IUnknown* p = nullptr;
 		ITypeInfo* pType = nullptr;
-		if( SUCCEEDED(m_pSite->GetItemInfo(pstrName, SCRIPTINFO_IUNKNOWN, &p, &pType)) ){
+		if( (dwFlags & SCRIPTITEM_ISVISIBLE) && SUCCEEDED(m_pSite->GetItemInfo(pstrName, SCRIPTINFO_IUNKNOWN, &p, &pType)) ){
 			IDispatch* pd = nullptr;
 			if( SUCCEEDED(p->QueryInterface(IID_IDispatch, (void**)&pd)) ){
 				m_ext[pstrName] = (IDispatch*)pd;
+
+                if(dwFlags & SCRIPTITEM_GLOBALMEMBERS){
+                    m_vbs.m_addedItems.push_back((IDispatch*)pd);
+                }
+
 				pd->Release();
 			}
 			p->Release();
@@ -3126,9 +3189,8 @@ DEBUG("%s\n", __func__)
 		/* [out] */ __RPC__deref_out_opt IDispatch **ppdisp
 	){
 DEBUG("%s\n", __func__)
-(*ppdisp = (IDispatch*)this)->AddRef();
-return S_OK;
-		return E_NOTIMPL;
+        (*ppdisp = (IDispatch*)this)->AddRef();
+        return S_OK;
 	}
 	
 	HRESULT STDMETHODCALLTYPE GetCurrentScriptThreadID( 
@@ -3173,6 +3235,8 @@ DEBUG("%s\n", __func__)
 
 // IDispatch
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
+        if(!ppvObject) return E_POINTER;
+
 		if(::IsEqualGUID(riid, IID_IActiveScriptParse)){
 			*ppvObject = (IActiveScriptParse*)this;
 		}else
@@ -3200,28 +3264,22 @@ DEBUG("[NOTIMPL]%ls\n", buf)
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT *pctinfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo){ return E_NOTIMPL; }
     HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId){
-DEBUG("%s: %ls\n", __func__, *rgszNames)
-        if(_wcsicmp(*rgszNames, L"xxxxxx") == 0){
-            *rgDispId = 1;
+        if(m_pPrcs){
+            return m_pPrcs->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
         }else
         {
             return DISP_E_UNKNOWNNAME;
         }
-
-        return S_OK;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
-        if(dispIdMember == 1){
-            // pVarResult->vt = VT_I8;
-            // pVarResult->llVal = MessageBoxW(nullptr, pDispParams->rgvarg[0].bstrVal, L"", MB_OK);
+        if(m_pPrcs){
+            return m_pPrcs->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
         }else
         {
             return DISP_E_MEMBERNOTFOUND;
         }
-
-        return S_OK;
     }
 };
 

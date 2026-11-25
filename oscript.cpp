@@ -22,6 +22,7 @@
 class VBScript : public IDispatch{
 public:
     typedef HRESULT (VBScript::*invoke_t)(DISPID, REFIID, LCID, WORD, DISPPARAMS*, VARIANT*, EXCEPINFO*, UINT*);
+    enum{ DISPID_FORADDEDITEMDISP = 0x10000 };
 
 private:
     volatile LONG       m_refc   = 1;
@@ -36,6 +37,9 @@ private:
 
     std::vector<_com_ptr_t<_com_IIID<IClassFactory, &IID_IClassFactory> > > m_cfs;
 
+    struct itemid{_disp_ptr_t p; DISPID id;};
+    std::vector<itemid>                                                     m_ids;
+
 public:
     VBScript(){
         std::random_device rd;
@@ -47,6 +51,8 @@ public:
 
 public:
     IDispatch* m_pProcessor = nullptr; // weak ptr
+
+    std::vector<_disp_ptr_t> m_addedItems;
 
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){ return E_NOTIMPL; }
@@ -82,11 +88,30 @@ public:
             }
         }
 
+        auto i = m_addedItems.begin();
+        while(i != m_addedItems.end()){
+            DISPID inner_id = 0;
+            if(SUCCEEDED((*i)->GetIDsOfNames(riid, rgszNames, cNames, lcid, &inner_id))){
+                *rgDispId = DISPID_FORADDEDITEMDISP + (DISPID)m_ids.size();
+                m_ids.push_back( {*i, inner_id} );
+
+                return S_OK;
+            }
+            ++i;
+        }
+
         return DISP_E_UNKNOWNNAME;
     }
     HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, 
         DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr)
     {
+        if(DISPID_FORADDEDITEMDISP <= dispIdMember){
+            size_t i = (size_t)(dispIdMember - DISPID_FORADDEDITEMDISP);
+            if(i < m_ids.size()){
+                return m_ids[i].p->Invoke(m_ids[i].id, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+            }
+            return DISP_E_MEMBERNOTFOUND;
+        }else
         if(dispIdMember < s_disps_n){
             invoke_t f = s_invokes[dispIdMember];
             if(f){
@@ -2970,7 +2995,7 @@ int interact(){
 
             size_t errline;
             if(!prog->isReady(errline)){
-                fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+                fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline+1);
                 return E_FAIL;
             }
 
@@ -3080,7 +3105,7 @@ int main(int argn, const char* argc[]){
 
     size_t errline;
     if(!oProgram.isReady(errline)){
-        fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline);
+        fwprintf(stderr, L"!%ls in line:%zu\n", L"parse error", errline+1);
         return E_FAIL;
     }
 
