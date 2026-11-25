@@ -1,10 +1,14 @@
-OpenVBS
-====
+# OpenVBS
 
-The Script Engine for the BASIC-2020.
+**An open-source, VBScript-compatible BASIC scripting engine for Windows, Linux, and macOS.**
+
+OpenVBS helps keep existing VBScript code usable while extending BASIC with modern language features. It is powered by the original **Jujube** scripting core.
+
+**Looking for a VBScript alternative on Windows?** See [OpenVBS-HotPatch](https://github.com/yrm006/openvbs-hotpatch), a Windows Active Scripting (`IActiveScript`) implementation with examples for Windows Script Host, embedded COM hosts, and registration-free loading.
 
 ## Description
-This is a script engine for the modern BASIC powered by the Jujube (self made) core. It is compatible with VBScript and has the modern features added. In addition, the Classic-ASP layer is implemented(on the way) as a library, so you can port your website to the Linux. [more...](https://p.na-s.jp/openvbs.html)
+
+OpenVBS aims for VBScript compatibility and adds modern BASIC extensions. A Classic ASP layer is under development to support legacy website migration, including Linux deployments. Compatibility varies by host and feature; this project does not claim that every VBScript or Classic ASP application works unchanged.
 
 ## Sample.obs
 Bingo Machine:
