@@ -10,6 +10,12 @@ OpenVBS helps keep existing VBScript code usable while extending BASIC with mode
 
 OpenVBS aims for VBScript compatibility and adds modern BASIC extensions. A Classic ASP layer is under development to support legacy website migration, including Linux deployments. Compatibility varies by host and feature; this project does not claim that every VBScript or Classic ASP application works unchanged.
 
+## Sample.vbs
+
+    Dim msg
+    msg = "Hello, VBS."
+    WScript.Echo msg
+
 ## Sample.obs
 Bingo Machine:
 
