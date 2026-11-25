@@ -85,7 +85,7 @@ Bingo Machine:
 [more...](https://github.com/yrm006/openvbs/blob/master/readme.txt)
 
 ## Licence
-[CC-BY](http://creativecommons.org/licenses/by/4.0/)
+MIT
 
 ## Author
 [NaturalStyle PREMIUM](https://p.na-s.jp)
