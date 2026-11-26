@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <activscp.h>
+#include <objsafe.h>
 #include <stdio.h>
 
 #include "jujube.h"
@@ -2911,7 +2912,8 @@ std::vector<_variant_t> VBScript::s_disps{
 
 class OBScript : public IDispatch,
 	public IActiveScriptParse,
-	public IActiveScript{
+	public IActiveScript,
+    public IObjectSafety{
 private:
     volatile LONG       m_refc   = 1;
 
@@ -3233,6 +3235,24 @@ DEBUG("%s\n", __func__)
 		return E_NOTIMPL;
 	}
 
+// IObjectSafety
+    DWORD m_dwSafety = 0;
+    HRESULT STDMETHODCALLTYPE GetInterfaceSafetyOptions(
+        REFIID, DWORD *pdwSupportedOptions, DWORD *pdwEnabledOptions
+    ){
+        *pdwSupportedOptions = INTERFACESAFE_FOR_UNTRUSTED_CALLER | INTERFACESAFE_FOR_UNTRUSTED_DATA;
+        *pdwEnabledOptions   = m_dwSafety;
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE SetInterfaceSafetyOptions(
+        REFIID, DWORD dwOptionSetMask, DWORD dwEnabledOptions
+    ){
+        DWORD sup = INTERFACESAFE_FOR_UNTRUSTED_CALLER | INTERFACESAFE_FOR_UNTRUSTED_DATA;
+        if(dwOptionSetMask & ~sup) return E_FAIL;
+        m_dwSafety = (m_dwSafety & ~dwOptionSetMask) | (dwEnabledOptions & dwOptionSetMask);
+        return S_OK;
+    }
+
 // IDispatch
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject){
         if(!ppvObject) return E_POINTER;
@@ -3242,6 +3262,9 @@ DEBUG("%s\n", __func__)
 		}else
 		if(::IsEqualGUID(riid, IID_IActiveScript)){
 			*ppvObject = (IActiveScript*)this;
+		}else
+		if(::IsEqualGUID(riid, IID_IObjectSafety)){
+			*ppvObject = (IObjectSafety*)this;
 		}else
 		if(::IsEqualGUID(riid, IID_IUnknown)){
 			*ppvObject = (IDispatch*)this;
